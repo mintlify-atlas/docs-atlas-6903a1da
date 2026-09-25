@@ -1,10 +1,10 @@
 ---
 title: "Ultraviolet and Scramjet Proxy Backend Configuration"
 sidebarTitle: "Proxy Backends"
-description: "T.O.P supports two proxy engines: Ultraviolet (UV) and Scramjet. Each uses XOR URL encoding with a unique scope path. Scramjet is the default."
+description: "T.O.P supports two proxy engines: Ultraviolet and Scramjet, each with its own scope path and URL codec. Scramjet is the default engine as of v6.0.0."
 ---
 
-T.O.P ships with two proxy engines: **Ultraviolet** and **Scramjet**. Both encode proxied URLs using an XOR codec and communicate with the server over the Wisp WebSocket protocol. Scramjet is the default as of v6.0.0. Users can switch between backends at any time from the Settings page.
+T.O.P ships with two proxy engines: **Ultraviolet** and **Scramjet**. Both communicate with the server over the Wisp WebSocket protocol. Scramjet is the default as of v6.0.0. Users can switch between backends at any time from the Settings page.
 
 ## Scramjet (default)
 
@@ -35,6 +35,7 @@ self.__scramjet$config = {
 |---|---|
 | Scope path | `/uv/scramjet/` |
 | Config file | `static/assets/scramjet/scramjet.config.js` |
+| URL codec | `encodeURIComponent` / `decodeURIComponent` |
 | Default | Yes (v6.0.0+) |
 
 The Scramjet scope is nested under the Ultraviolet scope path (`/uv/scramjet/`) so both engines can coexist under a single service-worker registration.

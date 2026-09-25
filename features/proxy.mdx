@@ -19,7 +19,7 @@ T.O.P (Interstellar) acts as a full web proxy: you type a URL or search query in
     `sw.js` is registered at startup with scope `/uv/`. It intercepts outbound fetch calls, decodes the XOR-encoded path, and tunnels the real request through the Wisp WebSocket transport.
   </Step>
   <Step title="Wisp WebSocket transport carries traffic">
-    The Node.js server upgrades matching WebSocket connections and routes them through the `@mercuryworkshop/wisp-js` server. The proxied response is rewritten on the fly and returned to the browser.
+    The Node.js server creates an `http.createServer()` instance. The `request` event routes all HTTP traffic through the Express application handler, while the `upgrade` event hands WebSocket connections off to the `@mercuryworkshop/wisp-js` server. The proxied response is rewritten on the fly and returned to the browser.
   </Step>
   <Step title="Content is rendered in-browser">
     The rewritten HTML, CSS, and JavaScript land in the browser as if they came from the proxy origin. Cookies, storage, and navigation all stay within the proxied session.
@@ -83,19 +83,31 @@ async function encodeProxyUrl(url) {
 
 [Wisp](https://github.com/MercuryWorkshop/wisp-js) is a WebSocket-based multiplexing protocol that lets the browser open a single persistent connection and tunnel multiple TCP streams through it. T.O.P uses `@mercuryworkshop/wisp-js/server` on the Node.js side to handle these upgrades.
 
+The Node.js server is created with `http.createServer()`. HTTP requests are handled by attaching the Express `app` to the `request` event, and WebSocket upgrades are handed to Wisp on the `upgrade` event:
+
 ```js
 // Excerpt from src/server.js
+const server = http.createServer();
+
+server.on("request", (req, res) => {
+  app(req, res);
+});
+
 server.on("upgrade", (req, socket, head) => {
   wisp.routeRequest(req, socket, head);
 });
 ```
 
-Two flags are set to make local and self-hosted deployments work without network restrictions:
+Two flags are set on the Wisp options object:
 
 ```js
 wisp.options.allow_loopback_ips = true;
 wisp.options.allow_private_ips = true;
 ```
+
+<Warning>
+  `allow_loopback_ips` and `allow_private_ips` are intended for **development only**. In a production deployment, leaving these enabled allows the proxy to reach services on your internal network. Disable them or restrict access at the network level before exposing T.O.P publicly.
+</Warning>
 
 Users can also point the proxy at a custom external Wisp server from the Settings page (`ws://` or `wss://` URL). This is useful for deployments where the built-in Wisp endpoint is behind a firewall or load balancer.
 
@@ -110,9 +122,10 @@ The Express server mounts the following routes. In production builds the route p
 | `GET /apps` | `apps.html` | 100 req/min |
 | `GET /settings` | `settings.html` | 100 req/min |
 | `GET /tabs` | `tabs.html` | 100 req/min |
+| `GET /play.html` | `games.html` | 100 req/min |
 | `GET /gh-games/:path` | GitHub game asset proxy | 50 req/min |
 
-Static assets (JS bundles, CSS, images) are served from the same directory via `express.static`. The `.runtime/` directory is explicitly blocked with a `404` to protect internal build metadata.
+`/play.html` serves `games.html` directly (it is not an HTTP redirect — the same file is sent). Static assets (JS bundles, CSS, images) are served from the same directory via `express.static`. The `.runtime/` directory is explicitly blocked with a `404` to protect internal build metadata.
 
 ## Rate limiting
 

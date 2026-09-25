@@ -79,7 +79,19 @@ Run the formatter at any time with:
 pnpm run format
 ```
 
-The linter is also enabled with the recommended rule set. You can run both together before committing:
+The linter is also enabled with the recommended rule set. Run it directly with:
+
+```bash
+pnpm run lint
+```
+
+This is equivalent to:
+
+```bash
+biome lint --write .
+```
+
+You can run formatting and linting together before committing:
 
 ```bash
 pnpm biome check --write .

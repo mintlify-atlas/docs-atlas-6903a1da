@@ -1,7 +1,7 @@
 ---
 title: "Tab Cloaking and About:Blank Masking in T.O.P"
 sidebarTitle: "Tab Cloaking"
-description: "T.O.P's tab cloaking disguises the browser tab with a custom title and favicon, or opens the proxy in an about:blank page to hide the URL from the address bar."
+description: "T.O.P disguises the browser tab with a custom title and favicon, or opens the proxy in an about:blank window to hide the URL from the address bar."
 ---
 
 Tab cloaking makes T.O.P look like a different website at a glance. There are two independent cloaking mechanisms: **tab title and favicon replacement**, which changes what the browser tab shows, and **about:blank cloaking**, which opens the entire proxy inside a new window whose address bar shows only `about:blank`. Both are configured from the Settings page at `/settings`.
@@ -25,28 +25,65 @@ URLs passed as favicon sources are validated by `reconstructSafeUrl`, which only
 
 ### Preset cloaks
 
-The Settings page exposes a dropdown with dozens of school-friendly presets. Selecting one saves both the display name and the matching favicon to `localStorage` immediately.
+The Settings page exposes a dropdown with dozens of school-friendly presets. Selecting one saves both the display name and the matching favicon to `localStorage` immediately. The full list of presets available in `settings.js` includes:
 
-| Preset | Tab title shown |
+| Preset key | Tab title shown |
 |---|---|
 | Classroom | Home |
-| Google Drive | My Drive - Google Drive |
+| Drive | My Drive - Google Drive |
 | Gmail | Gmail |
 | Google Meet | Google Meet |
 | Google Docs | Google Docs |
+| Google Slides | Google Slides |
 | Canvas | Dashboard |
 | Schoology | Home \| Schoology |
 | Clever | Clever \| Portal |
-| Khan Academy | Dashboard \| Khan Academy |
+| Khan | Dashboard \| Khan Academy |
 | IXL | IXL \| Dashboard |
 | Nearpod | Nearpod |
 | Desmos | Desmos \| Graphing Calculator |
 | Wikipedia | Wikipedia |
-| PowerSchool | Grades and Attendance |
-| DeltaMath | DeltaMath |
+| Britannica | Encyclopedia Britannica \| Britannica |
+| Ducksters | Ducksters |
+| Naviance | Naviance Student |
+| Campus | Infinite Campus |
+| CodeHS | Sandbox \| CodeHS |
+| LinkIt | Test Taker |
 | Edpuzzle | Edpuzzle |
 | Kami | Kami |
-| Naviance | Naviance Student |
+| DeltaMath | DeltaMath |
+| StudentVUE | StudentVUE |
+| Minga | Minga – Creating Amazing Schools |
+| Google | Google |
+| Savvas Realize | Savvas Realize |
+| SmartPass | SmartPass |
+| Dictionary | Dictionary.com \| Meanings & Definitions of English Words |
+| Thesaurus | Synonyms and Antonyms of Words \| Thesaurus.com |
+| PBS Learning Media | PBS LearningMedia \| Teaching Resources For Students And Teachers |
+| PBS Learning Media Student Home | Student Homepage \| PBS LearningMedia |
+| NoRedInk Home | Student Home \| NoRedInk |
+| Quizlet Home | Flashcards, learning tools and textbook solutions \| Quizlet |
+| Newsela Binder | Newsela \| Binder |
+| Newsela Assignments | Newsela \| Assignments |
+| Newsela Home | Newsela \| Instructional Content Platform |
+| PowerSchool Sign In | Student and Parent Sign In |
+| PowerSchool Grades and Attendance | Grades and Attendance |
+| PowerSchool Teacher Comments | Teacher Comments |
+| PowerSchool Standards Grades | Standards Grades |
+| PowerSchool Attendance | Attendance |
+| i-Ready Math | Math To Do, i-Ready |
+| i-Ready Reading | Reading To Do, i-Ready |
+| i-Ready Learning Games | Learning Games, i-Ready |
+| ClassLink Login | Login |
+| Google Forms Locked Mode | Start your quiz |
+| GoGuardian Admin Restricted | Restricted |
+| GoGuardian Teacher Block | Uh oh! |
+| World Book Online - Super Home | Super Home Page |
+| World Book Online - Student | WBO Student \| Home Page |
+| World Book Online - Timelines | Timelines - Home Page |
+| World History Encyclopedia | World History Encyclopedia |
+| Big Ideas Math | Big Ideas Math |
+| Big Ideas Math Assignment Player | Assignment Player |
 
 Favicons for every preset are stored locally under `/assets/media/favicon/` — no external request is made to fetch them.
 
@@ -55,7 +92,7 @@ Favicons for every preset are stored locally under `/assets/media/favicon/` — 
 If none of the presets fit, users can enter a custom tab title and a custom favicon URL in the fields below the dropdown. Custom values take priority over preset values and are stored under the `CustomName` and `CustomIcon` keys in `localStorage`.
 
 ```js
-// settings.js — saving a custom cloak
+// settings.js — saveCustomCloak()
 function saveCustomCloak() {
   const nameVal = document.getElementById("custom-cloak-name").value.trim();
   const iconVal = document.getElementById("custom-cloak-icon").value.trim();
@@ -70,15 +107,19 @@ function saveCustomCloak() {
 }
 ```
 
-Click **Reset** to clear any custom values and revert to the active preset.
+Click **Reset** to clear any custom values (via `resetCustomCloak()`) and revert to the active preset.
 
 ## About:blank cloaking
 
-About:blank cloaking opens the proxy in a brand-new browser window whose address bar displays `about:blank` instead of the proxy URL. The new window contains a full-screen `<iframe>` pointing at the current page, so the proxy continues to work normally while being invisible in the URL bar.
+About:blank cloaking opens the proxy in a brand-new browser window whose address bar displays `about:blank` instead of the proxy URL. The new window contains a full-screen `<iframe>` pointing at the current page, so the proxy continues to work normally while being invisible in the URL bar. This is triggered by the `AB()` function in `settings.js`.
 
 ```js
 // settings.js — AB() function
 const popup = open("about:blank", "_blank");
+if (!popup || popup.closed) {
+  alert("Window blocked. Please allow popups for this site.");
+  return;
+}
 
 const iframe = doc.createElement("iframe");
 iframe.src = location.href;
@@ -99,7 +140,17 @@ The popup window also hooks `window.onbeforeunload` to show a "Leave Site?" conf
 
 ### Enabling auto-AB on page load
 
-The Settings page includes a toggle (`ab-settings-switch`) that stores `ab = "true"` in `localStorage`. Pages can read this flag to open the about:blank popup automatically when the proxy is first visited.
+The Settings page includes a toggle (`ab-settings-switch`) that calls `toggleAB()` when clicked. `toggleAB()` flips the `ab` key in `localStorage` between `"true"` and `"false"`:
+
+```js
+// settings.js — toggleAB()
+function toggleAB() {
+  const ab = store.get("ab");
+  store.set("ab", ab === "true" ? "false" : "true");
+}
+```
+
+Pages can read the `ab` flag at load time and call `AB()` automatically when the proxy is first visited, so the about:blank window opens without any manual action.
 
 ## Panic key
 

@@ -59,11 +59,12 @@ The pipeline executes the following stages in order:
   </Step>
 
   <Step title="Process HTML files">
-    Every `.html` file in `dist/` goes through three sub-steps:
+    Every `.html` file in `dist/` goes through four sub-steps in order:
 
-    1. **Inline script obfuscation** — `<script>` blocks without a `src` attribute are extracted, obfuscated with `javascript-obfuscator`, and re-injected
-    2. **Text-node hardening** — visible text is split across inert inline wrappers (`<span>`, `<x-a>`, `<x-b>`, `<ab-x>`, `<s-p>`) with occasional numeric character encoding, so the rendered page looks identical but contiguous plaintext is no longer present in the raw HTML
+    1. **Text-node hardening** — visible text is split across inert inline wrappers (`<span>`, `<x-a>`, `<x-b>`, `<ab-x>`, `<s-p>`) with occasional numeric character encoding, so the rendered page looks identical but contiguous plaintext is no longer present in the raw HTML
+    2. **Inline script obfuscation** — `<script>` blocks without a `src` attribute are extracted, obfuscated with `javascript-obfuscator`, and re-injected
     3. **Minification** — comments are stripped, redundant whitespace is collapsed, and protected blocks (scripts, styles, `<pre>`) are left verbatim
+    4. **Attribute and text encoding** — attribute values and any remaining text nodes are numerically entity-encoded
   </Step>
 
   <Step title="Randomize all asset paths">

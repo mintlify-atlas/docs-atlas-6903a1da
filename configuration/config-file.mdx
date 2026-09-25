@@ -1,10 +1,10 @@
 ---
-title: "Configure T.O.P with config.js"
+title: "T.O.P Server Configuration: The config.js File Guide"
 sidebarTitle: "Config File"
-description: "T.O.P is configured through config.js at the project root. Set password protection, user credentials, and start the server with optional environment variables."
+description: "T.O.P is configured through config.js at the project root. Control password protection, user credentials, and the listening port from one place."
 ---
 
-The primary configuration file for T.O.P is `config.js`, located at the root of your project. It controls whether password protection is active and which credentials are accepted. Two additional environment variables let you override the listening port and activate the auth middleware at startup without touching the file.
+The primary configuration file for T.O.P is `config.js`, located at the root of your project. It controls whether password protection is active and which credentials are accepted. The `PORT` environment variable lets you override the default listening port without touching the file.
 
 ## The config.js file
 
@@ -59,19 +59,5 @@ PORT=3000 pnpm start
 
 ```powershell Windows PowerShell
 $env:PORT=3000; pnpm start
-```
-</CodeGroup>
-
-### config
-
-The `config` environment variable activates the `challenge` middleware at runtime without editing `config.js`. The value must be `true` and `challenge` must also be set to `true` in the file for protection to take effect.
-
-<CodeGroup>
-```bash Linux / macOS
-config=true pnpm start
-```
-
-```powershell Windows PowerShell
-$env:config=true; pnpm start
 ```
 </CodeGroup>

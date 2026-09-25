@@ -1,7 +1,7 @@
 ---
 title: "Built-in Browser Tabs System"
 sidebarTitle: "Tabs System"
-description: "T.O.P's built-in tab manager lets you open multiple proxied pages simultaneously, navigate between them, and use DevTools — all within a single browser tab."
+description: "T.O.P's tab manager lets you open multiple proxied pages simultaneously, navigate between them, and toggle DevTools — all within a single browser tab."
 ---
 
 T.O.P includes a browser-within-a-browser interface accessible at `/tabs`. Each "tab" is an `<iframe>` that runs a fully independent proxied session, complete with its own navigation history. A toolbar at the top of the page provides an address bar, back/forward/reload controls, and actions for fullscreen, window popout, and DevTools. Multiple tabs can be open at once and rearranged by dragging.
@@ -33,13 +33,13 @@ The toolbar exposes the following controls, all implemented in `tabs.js`:
     Calls `location.reload()` on the active iframe's `contentWindow` and refreshes the displayed address.
   </Card>
   <Card title="popoutTab()" icon="up-right-from-square">
-    Opens the active iframe's current URL in a new `about:blank` window with a full-screen iframe — identical to the about:blank cloak. The tab title and favicon from `localStorage` are applied to the new window.
+    Opens the active iframe's `src` (the encoded proxy URL) in a new `about:blank` window with a full-screen iframe. The `name` and `icon` values from `localStorage` are applied to the new window as its title and favicon.
   </Card>
   <Card title="toggleDevTools()" icon="code">
-    Injects [Eruda](https://github.com/liriliri/eruda) into the active iframe via a `<script>` tag and calls `eruda.init()` / `eruda.show()`. Calling `toggleDevTools()` again destroys the Eruda instance.
+    Injects [Eruda](https://github.com/liriliri/eruda) into the active iframe via a `<script>` tag loaded from the jsDelivr CDN, then calls `eruda.init()` / `eruda.show()`. Calling `toggleDevTools()` again destroys the Eruda instance.
   </Card>
   <Card title="toggleFullscreen()" icon="expand">
-    Calls `requestFullscreen()` on the active iframe's `documentElement`, or `exitFullscreen()` if fullscreen is already active.
+    Calls `requestFullscreen()` on the active iframe's `contentDocument.documentElement`, or `exitFullscreen()` on `contentDocument` if fullscreen is already active.
   </Card>
 </CardGroup>
 
@@ -86,19 +86,25 @@ Tabs can be reordered by dragging them within the tab strip. The `dragstart`, `d
 
 ## `_top` link interception
 
-Sites inside iframes sometimes use `target="_top"` on links or forms to break out of their frame. Because T.O.P's iframe `sandbox` does not include `allow-top-navigation`, these navigations would be silently blocked. Since v6.0.0, `tabs.js` intercepts `click` and `submit` events on `_top`-targeted elements inside the iframe and instead opens the destination in a new tab:
+Sites inside iframes sometimes use `target="_top"` on links or forms to break out of their frame. Because T.O.P's iframe `sandbox` does not include `allow-top-navigation`, these navigations would be silently blocked. Since v6.0.0, `tabs.js` intercepts `click` events on `_top`-targeted links and `submit` events on `_top`-targeted forms inside the iframe, and instead opens the destination in a new tab:
 
 ```js
 // tabs.js — _top interception
 function handleTopNavigation(event) {
-  const source = event.target?.closest?.("a[target], area[target]");
+  const isSubmit = event.type === "submit";
+  const source = isSubmit ? event.target : event.target?.closest?.("a[target], area[target]");
   if (source?.target?.toLowerCase() !== "_top") return;
+  // GET forms: redirect to new tab; POST forms: retarget to _self
+  if (isSubmit && (source.method || "get").toLowerCase() !== "get") {
+    source.target = "_self";
+    return;
+  }
   event.preventDefault();
-  openInNewTab(source.href);
+  openInNewTab(destination);
 }
 ```
 
-POST form submissions targeting `_top` are retargeted to `_self` so they submit in place rather than being swallowed.
+POST form submissions targeting `_top` are retargeted to `_self` so they submit in place rather than being swallowed. A separate `formProto` shim handles the case where JavaScript calls `form.submit()` directly (which fires no `submit` event).
 
 ## Service worker registration
 

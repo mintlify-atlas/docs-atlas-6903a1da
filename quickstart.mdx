@@ -1,5 +1,5 @@
 ---
-title: "Get Started with T.O.P in Under 5 Minutes"
+title: "Quickstart: Get the T.O.P Proxy Running in 5 Minutes"
 sidebarTitle: "Quickstart"
 description: "Clone T.O.P, install dependencies with pnpm, npm, or bun, start the Node.js server, and have your proxy running locally in minutes."
 ---
@@ -110,7 +110,7 @@ pnpm build
 This executes `node src/build.js` and produces an optimised `dist/` directory that:
 
 - **Obfuscates** all JavaScript using `javascript-obfuscator`
-- **Minifies** all CSS with Terser
+- **Minifies** all CSS with a custom build-time minifier
 - **Hardens** the HTML pages
 - **Randomises** the Ultraviolet and Scramjet proxy scopes per build, so encoded URLs are unique to your instance
 - **Randomises** internal page routes and records them in `dist/.runtime/vendor-map.cjs`
@@ -135,7 +135,7 @@ After a successful build, `pnpm start` will automatically detect `dist/` and ser
 
 To require a username and password before anyone can access the proxy:
 
-1. Open `config.js` and set `challenge` to `true`:
+1. Open `config.js` and set `challenge` to `true`. Add any username/password pairs you want under the `users` key:
 
    ```js config.js
    const config = {
@@ -148,26 +148,20 @@ To require a username and password before anyone can access the proxy:
    export default config;
    ```
 
-2. Start the server with the `config=true` environment variable:
+2. Start (or restart) the server normally:
 
    <CodeGroup>
      ```bash pnpm
-     config=true pnpm start
+     pnpm start
      ```
 
      ```bash npm
-     config=true npm run start
+     npm run start
      ```
 
      ```bash bun
-     config=true bun start
+     bun start
      ```
    </CodeGroup>
 
-   On Windows PowerShell, use:
-
-   ```powershell
-   $env:config=true; pnpm start
-   ```
-
-When password protection is active, the server prints each registered username and password to the console on startup. For full configuration details, see the [Password Protection](/configuration/password-protection) guide.
+The server reads `config.js` directly on startup. When `challenge` is `true`, it prints each registered username and password to the console and enables HTTP Basic Auth on every route. For full configuration details, see the [Password Protection](/configuration/password-protection) guide.

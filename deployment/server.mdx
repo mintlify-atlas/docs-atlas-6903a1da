@@ -1,5 +1,5 @@
 ---
-title: "Deploy T.O.P on a VPS or Dedicated Server"
+title: "Self-Host T.O.P on a Linux VPS or Dedicated Server"
 sidebarTitle: "Server"
 description: "Deploy T.O.P on any Linux VPS or server running Node.js 16+. Clone, install with pnpm or npm, configure the PORT, and start with a single command."
 ---
@@ -74,13 +74,19 @@ Before getting started, make sure the following are available on your server:
 
 The server reads the `PORT` environment variable at startup. If not set, it defaults to `8080` (as defined in `src/server.js`). Pass it inline before your start command to override:
 
-```bash
-PORT=3000 pnpm start
-```
+<CodeGroup>
+  ```bash Linux / macOS
+  PORT=3000 pnpm start
+  ```
+
+  ```bash Windows PowerShell
+  $env:PORT=3000; pnpm start
+  ```
+</CodeGroup>
 
 ## Production Build
 
-Running `pnpm build` compiles an optimized output into the `dist/` directory. When `dist/` contains a valid `.runtime/vendor-map.cjs`, the server automatically serves from `dist/` instead of `static/`. This build path randomizes internal page routes for additional obscurity.
+Running `pnpm build` executes `node src/build.js`, which produces an optimised output in the `dist/` directory. When `dist/` contains a valid `.runtime/vendor-map.cjs`, the server automatically serves from `dist/` instead of `static/`. This build path randomises internal page routes for additional obscurity.
 
 ```bash
 pnpm build

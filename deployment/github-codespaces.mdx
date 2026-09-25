@@ -1,5 +1,5 @@
 ---
-title: "Deploy T.O.P via GitHub Codespaces"
+title: "How to Deploy T.O.P via GitHub Codespaces for Free"
 sidebarTitle: "Codespaces"
 description: "Run T.O.P in a free GitHub Codespace with a public URL. Create a Codespace, install dependencies, start the server, and set port visibility to public."
 ---
@@ -56,9 +56,15 @@ If the port visibility popup did not appear when the server started, follow thes
   <Step title="Start the server on an explicit port">
     Stop any running server and restart it with `PORT` set explicitly (replace `8080` with any available port number):
 
-    ```bash
-    PORT=8080 pnpm start
-    ```
+    <CodeGroup>
+      ```bash Linux / macOS
+      PORT=8080 pnpm start
+      ```
+
+      ```bash Windows PowerShell
+      $env:PORT=8080; pnpm start
+      ```
+    </CodeGroup>
   </Step>
 
   <Step title="Forward the port manually">

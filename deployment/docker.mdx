@@ -1,7 +1,7 @@
 ---
-title: "Run T.O.P with Docker"
+title: "How to Run T.O.P in a Docker Container Step by Step"
 sidebarTitle: "Docker"
-description: "Build and run T.O.P in a Docker container using the included Dockerfile. Set PORT and config environment variables for production use."
+description: "Build and run T.O.P in a Docker container using the included Dockerfile. Override the PORT environment variable and deploy to any platform."
 ---
 
 T.O.P ships with a ready-to-use `Dockerfile` based on the slim Debian Bookworm Node.js image. Containerising the proxy keeps it isolated from the host system and makes it straightforward to deploy anywhere that runs Docker — including cloud platforms such as Render.
@@ -49,19 +49,37 @@ docker run -p 8080:8080 interstellar
 
 ### Custom PORT
 
-If you need the server to listen on a different port, pass the `PORT` environment variable and adjust the host-side mapping accordingly:
+To make the server listen on a different port inside the container, pass the `PORT` environment variable and update the port mapping to match:
 
 ```bash
-docker run -p 3000:8080 -e PORT=8080 interstellar
+docker run -p 3000:3000 -e PORT=3000 interstellar
 ```
 
-### Password Protection
+Both the `-p` host-side mapping and `-e PORT` must use the same port number so that the server binds to the port Docker is forwarding.
 
-T.O.P supports optional password protection via the `challenge` flag in `config.js`. To enable it, first open `config.js` and set `challenge` to `true`, then pass `config=true` as an environment variable when running the container:
+## Password Protection
+
+T.O.P supports optional password protection controlled by the `challenge` flag in `config.js`. To enable it, open `config.js` and set `challenge` to `true` **before** building the Docker image:
+
+```javascript
+const config = {
+  challenge: true,
+  users: {
+    interstellar: "password",
+  },
+};
+```
+
+After saving the file, rebuild the image so the updated `config.js` is baked in:
 
 ```bash
-docker run -p 8080:8080 -e config=true interstellar
+docker build -t interstellar .
+docker run -p 8080:8080 interstellar
 ```
+
+<Note>
+  Password protection is configured at build time by editing `config.js` — there is no runtime environment variable that toggles it. If you change `config.js` after building, you must rebuild the image for the change to take effect.
+</Note>
 
 ## Deploying to Render with Docker
 

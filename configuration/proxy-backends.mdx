@@ -1,0 +1,94 @@
+---
+title: "Ultraviolet and Scramjet Proxy Backend Configuration"
+sidebarTitle: "Proxy Backends"
+description: "T.O.P supports two proxy engines: Ultraviolet (UV) and Scramjet. Each uses XOR URL encoding with a unique scope path. Scramjet is the default."
+---
+
+T.O.P ships with two proxy engines: **Ultraviolet** and **Scramjet**. Both encode proxied URLs using an XOR codec and communicate with the server over the Wisp WebSocket protocol. Scramjet is the default as of v6.0.0. Users can switch between backends at any time from the Settings page.
+
+## Scramjet (default)
+
+Scramjet is the default proxy engine in T.O.P. It is configured in `static/assets/scramjet/scramjet.config.js`:
+
+```js
+self.__scramjet$config = {
+  prefix: "/uv/scramjet/",
+  codec: {
+    encode: url => url && encodeURIComponent(url),
+    decode: url => url && decodeURIComponent(url),
+  },
+  files: {
+    wasm: "/assets/scramjet/scramjet.wasm.wasm",
+    all: "/assets/scramjet/scramjet.all.js",
+    sync: "/assets/scramjet/scramjet.sync.js",
+  },
+  flags: {
+    rewriterLogs: false,
+    scramitize: false,
+    cleanErrors: true,
+    sourcemaps: true,
+  },
+};
+```
+
+| Property | Value |
+|---|---|
+| Scope path | `/uv/scramjet/` |
+| Config file | `static/assets/scramjet/scramjet.config.js` |
+| Default | Yes (v6.0.0+) |
+
+The Scramjet scope is nested under the Ultraviolet scope path (`/uv/scramjet/`) so both engines can coexist under a single service-worker registration.
+
+## Ultraviolet
+
+Ultraviolet is the secondary proxy engine. It is configured in `static/assets/ultraviolet/uv.config.js`:
+
+```js
+self.__uv$config = {
+  prefix: "/uv/",
+  encodeUrl: Ultraviolet.codec.xor.encode,
+  decodeUrl: Ultraviolet.codec.xor.decode,
+  handler: "/assets/ultraviolet/uv.handler.js",
+  client: "/assets/ultraviolet/uv.client.js",
+  bundle: "/assets/ultraviolet/uv.bundle.js",
+  config: "/assets/ultraviolet/uv.config.js",
+  sw: "/assets/ultraviolet/uv.sw.js",
+};
+```
+
+| Property | Value |
+|---|---|
+| Scope path | `/uv/` |
+| Config file | `static/assets/ultraviolet/uv.config.js` |
+| URL codec | XOR (`Ultraviolet.codec.xor`) |
+| Default | No |
+
+## Switching backends
+
+Open the Settings page at `/settings` and locate the **Choose your Proxy** card. Select either **Scramjet (Default)** or **Ultraviolet** from the dropdown. The choice is stored in the browser and takes effect immediately.
+
+When Scramjet is selected, an additional **Transport** section appears that lets you choose between the **Epoxy** (default) and **Libcurl** transport adapters, and optionally specify a custom Wisp server URL.
+
+## Wisp transport
+
+Both proxy engines use the **Wisp** WebSocket protocol for fast, low-latency tunnelling between the browser and the server. The server-side Wisp handler is provided by `@mercuryworkshop/wisp-js`. The following transport packages are bundled and served by the application:
+
+- `@mercuryworkshop/epoxy-transport` — default transport, served at `/epoxy/`
+- `@mercuryworkshop/libcurl-transport` — alternative transport, served at `/libcurl/`
+- `@mercuryworkshop/bare-mux` — multiplexer that manages the active transport, served at `/baremux/`
+
+## Production builds and path obfuscation
+
+Running `pnpm build` triggers `src/build.js`, which applies several obfuscation steps to the proxy configuration:
+
+- The XOR key in both `uv.config.js` and `scramjet.config.js` is **randomized per build**. The encode/decode function bodies are replaced with new keyed implementations so that URL encoding is unique to each deployment.
+- The scope paths `/uv/` and `/uv/scramjet/` are replaced with randomly generated path segments (e.g. `/delta/` and `/delta/sigma/`).
+- All asset paths (`/assets/ultraviolet/`, `/assets/scramjet/`, `/epoxy/`, `/libcurl/`, `/baremux/`) are moved to unpredictable URLs. The config files are patched automatically to point at the new locations.
+- The resulting path map is written to `dist/.runtime/vendor-map.cjs` and read by the server at startup.
+
+<Note>
+  In production builds, scope paths and asset URLs are randomized by `pnpm
+  build` for obfuscation. The config files are patched automatically — you do
+  not need to update them manually. Never serve the `dist/.runtime/` directory;
+  the server returns 404 for any request to `/.runtime`.
+</Note>

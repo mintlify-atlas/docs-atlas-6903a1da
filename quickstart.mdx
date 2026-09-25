@@ -1,47 +1,173 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Get Started with T.O.P in Under 5 Minutes"
+sidebarTitle: "Quickstart"
+description: "Clone T.O.P, install dependencies with pnpm, npm, or bun, start the Node.js server, and have your proxy running locally in minutes."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
+T.O.P is a Node.js server application — getting it running locally takes nothing more than a clone, a dependency install, and a single start command. Follow the steps below and you will have a fully functional proxy, game catalogue, and tab system available at `http://localhost:8080` in just a few minutes.
 
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
+<Warning>
+  T.O.P requires a persistent Node.js process to operate. It **cannot** be deployed to static hosts such as Netlify, Cloudflare Pages, or GitHub Pages. Use a local machine, VPS, Docker container, or GitHub Codespaces instead.
+</Warning>
 
 ## Prerequisites
 
-Before you begin, you must have:
+Before you begin, make sure the following are available on your machine:
 
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
+- **Node.js** `>= 16.0.0`
+- **npm** `>= 7.0.0` — or an alternative package manager (pnpm or bun)
 
-## Get started
+<Tip>
+  **pnpm is recommended.** It is faster than npm, produces a deterministic lockfile, and is the package manager used by the Interstellar maintainers. Install it with `npm install -g pnpm` if you do not have it already.
+</Tip>
+
+## Setup Steps
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+  <Step title="Clone the Repository">
+    Clone the Interstellar repository from GitHub and change into the project directory:
 
     ```bash
-    npm install your-package
+    git clone https://github.com/UseInterstellar/Interstellar
+    cd Interstellar
+    ```
+
+    If you want the ad-free branch instead, use:
+
+    ```bash
+    git clone --branch Ad-Free https://github.com/UseInterstellar/Interstellar
+    cd Interstellar
     ```
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
+
+  <Step title="Install Dependencies">
+    Install all required Node.js packages. Choose the command that matches your package manager:
+
+    <CodeGroup>
+      ```bash pnpm
+      pnpm i
+      ```
+
+      ```bash npm
+      npm i
+      ```
+
+      ```bash bun
+      bun i
+      ```
+    </CodeGroup>
+
+    This installs the Express server, both proxy engines (Ultraviolet and Scramjet), the Wisp WebSocket transport, and all other runtime dependencies listed in `package.json`.
+  </Step>
+
+  <Step title="Start the Server">
+    Launch the T.O.P Node.js server:
+
+    <CodeGroup>
+      ```bash pnpm
+      pnpm start
+      ```
+
+      ```bash npm
+      npm run start
+      ```
+
+      ```bash bun
+      bun start
+      ```
+    </CodeGroup>
+
+    All three commands execute `node src/server.js` under the hood. Once the server is ready, you will see:
+
+    ```
+    🚀 Starting server...
+    Serving from static/
+    🌍 Server is running on http://localhost:8080
+    ```
+
+    The server listens on port **8080** by default. To use a different port, set the `PORT` environment variable before running the start command:
 
     ```bash
-    your-cli init
+    PORT=3000 pnpm start
     ```
   </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
 
-    ```bash
-    your-cli start
-    ```
+  <Step title="Open the Proxy in Your Browser">
+    Navigate to [http://localhost:8080](http://localhost:8080) in any modern browser. The T.O.P home page will load with the search bar, game catalogue links, and theme controls all ready to use.
+
+    To test the proxy, type any URL into the search bar and press Enter. The page will be fetched and rendered through the Scramjet engine (the default in v6) without leaving the T.O.P origin.
   </Step>
 </Steps>
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
+## Optional: Run the Production Build
 
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
-</Tip>
+The development server (`pnpm start`) serves files directly from the `static/` directory with no transformation. For a production deployment, run the build step first:
+
+```bash
+pnpm build
+```
+
+This executes `node src/build.js` and produces an optimised `dist/` directory that:
+
+- **Obfuscates** all JavaScript using `javascript-obfuscator`
+- **Minifies** all CSS with Terser
+- **Hardens** the HTML pages
+- **Randomises** the Ultraviolet and Scramjet proxy scopes per build, so encoded URLs are unique to your instance
+- **Randomises** internal page routes and records them in `dist/.runtime/vendor-map.cjs`
+
+After a successful build, `pnpm start` will automatically detect `dist/` and serve from there instead of `static/`.
+
+<CodeGroup>
+  ```bash pnpm
+  pnpm build && pnpm start
+  ```
+
+  ```bash npm
+  npm run build && npm run start
+  ```
+
+  ```bash bun
+  bun run build && bun start
+  ```
+</CodeGroup>
+
+## Optional: Enable Password Protection
+
+To require a username and password before anyone can access the proxy:
+
+1. Open `config.js` and set `challenge` to `true`:
+
+   ```js config.js
+   const config = {
+     challenge: true, // Enable password protection
+     users: {
+       interstellar: "password", // username: 'password'
+     },
+   };
+
+   export default config;
+   ```
+
+2. Start the server with the `config=true` environment variable:
+
+   <CodeGroup>
+     ```bash pnpm
+     config=true pnpm start
+     ```
+
+     ```bash npm
+     config=true npm run start
+     ```
+
+     ```bash bun
+     config=true bun start
+     ```
+   </CodeGroup>
+
+   On Windows PowerShell, use:
+
+   ```powershell
+   $env:config=true; pnpm start
+   ```
+
+When password protection is active, the server prints each registered username and password to the console on startup. For full configuration details, see the [Password Protection](/configuration/password-protection) guide.

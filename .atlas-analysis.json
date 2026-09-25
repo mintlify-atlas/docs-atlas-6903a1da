@@ -1,0 +1,86 @@
+{
+  "projectType": "saas",
+  "projectName": "T.O.P (Interstellar)",
+  "projectDescription": "A fast, full-featured web proxy with built-in games, apps, tab cloaking, and multiple proxy backends, designed to be self-hosted and deployed on a Node.js server.",
+  "theme": "luma",
+  "primaryColor": "#5c64f4",
+  "lightColor": "#acb4fc",
+  "darkColor": "#ffffff",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Deployment",
+            "pages": [
+              "deployment/server",
+              "deployment/docker",
+              "deployment/github-codespaces",
+              "deployment/cloud-platforms"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/config-file",
+              "configuration/password-protection",
+              "configuration/proxy-backends",
+              "configuration/themes"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/proxy",
+              "features/games-and-apps",
+              "features/tab-cloaking",
+              "features/tabs-system"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development/build-pipeline",
+              "development/contributing",
+              "development/security"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Ultraviolet and Scramjet dual-proxy backends",
+    "XOR URL encoding with per-build randomization",
+    "Built-in tab system with tab cloaking (about:blank masking)",
+    "Large built-in games and apps catalogue (300+ titles)",
+    "Optional HTTP Basic Auth password protection",
+    "Production build pipeline with JS obfuscation, HTML hardening, and CSS minification",
+    "Rate limiting on all routes",
+    "Wisp WebSocket transport support",
+    "Multiple UI themes (Catppuccin, Gruvbox, Tokyo Night, Nord, Synthwave, etc.)",
+    "GitHub Codespaces, Heroku, Koyeb, Render, and Docker deployment support"
+  ],
+  "publicApiSurface": [
+    "GET / — home page with proxy search bar",
+    "GET /games — games catalogue page",
+    "GET /apps — apps catalogue page",
+    "GET /tabs — built-in tab manager",
+    "GET /settings — settings and theme selector",
+    "GET /gh-games/:path — proxied GitHub-hosted game asset endpoint",
+    "config.js { challenge, users } — password protection configuration",
+    "PORT environment variable — server listen port (default 8080)",
+    "pnpm start / npm run start — start the server",
+    "pnpm build / npm run build — run the production build pipeline",
+    "Ultraviolet proxy scope: /uv/",
+    "Scramjet proxy scope: /uv/scramjet/"
+  ]
+}

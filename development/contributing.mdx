@@ -1,0 +1,127 @@
+---
+title: "Contributing to T.O.P"
+sidebarTitle: "Contributing"
+description: "Contribute games, features, or bug fixes to T.O.P. Follow the pull request checklist, run the Biome formatter, and minify JSON files before submitting."
+---
+
+T.O.P is an open-source project and contributions are welcome. Whether you are adding a game, fixing a bug, improving the UI, or refining the codebase, following the guidelines below ensures your work can be reviewed and merged smoothly. Please read through the checklist before opening a pull request.
+
+## Pull Request Checklist
+
+Every pull request should satisfy all of the following requirements before it is submitted for review.
+
+<Steps>
+  <Step title="Compatibility">
+    Ensure your changes work seamlessly on both **mobile and desktop** platforms. T.O.P is used on a wide range of devices including Chromebooks, iPads, and phones — test accordingly.
+  </Step>
+
+  <Step title="Version Bumping">
+    Update the version number in all relevant files (for example, `index.js?v=number`) to the next consecutive number whenever you modify any files. This ensures clients always fetch the latest assets.
+  </Step>
+
+  <Step title="Code Formatting">
+    Run the Biome formatter before finalizing your changes to keep the codebase consistent:
+
+    ```bash
+    pnpm run format
+    ```
+
+    This is equivalent to running:
+
+    ```bash
+    pnpm biome format --write .
+    ```
+
+    The formatter enforces 2-space indentation, LF line endings, and a line width of 320 characters. It excludes `dist/`, `node_modules/`, minified JSON files, and lockfiles automatically.
+  </Step>
+
+  <Step title="Minifying JSON">
+    If you edit `apps.json` or `games.json`, you must also minify your changes and place the result in the corresponding `.min.json` file. You can use [codebeautify.org/jsonminifier](https://codebeautify.org/jsonminifier) to produce the minified output.
+
+    For example: if you edit `apps.json`, paste the minified result into `apps.min.json`. The server and build pipeline only read the `.min.json` variants; the human-readable originals are dropped during the build.
+  </Step>
+
+  <Step title="Test Your Changes">
+    Conduct thorough testing to ensure your modifications do not introduce issues or break existing functionality. Pay special attention to proxy behaviour, navigation, and any feature area your change touches.
+  </Step>
+
+  <Step title="Descriptive Pull Requests">
+    Provide a clear, concise description in your pull request. Include details on the problem being addressed and how your changes resolve it. Reviewers should be able to understand the intent of your PR without needing to read every line of diff.
+  </Step>
+
+  <Step title="Responsive Design">
+    Confirm that your changes adhere to responsive design principles and provide a consistent experience across various screen sizes and device types.
+  </Step>
+
+  <Step title="Collaboration">
+    Be open to feedback and responsive to comments during the review process. Pull requests may require revisions — that is a normal part of contributing to any project.
+  </Step>
+</Steps>
+
+## Code Formatting
+
+T.O.P uses [Biome](https://biomejs.dev/) (`@biomejs/biome` v2.2.2) for formatting and linting. The configuration lives in `biome.json` at the root of the repository.
+
+Key formatting rules:
+
+| Setting | Value |
+|---|---|
+| Indent style | Spaces |
+| Indent width | 2 |
+| Line ending | LF |
+| Line width | 320 |
+| Arrow parentheses | As needed |
+| Bracket same line | Yes |
+
+Run the formatter at any time with:
+
+```bash
+pnpm run format
+```
+
+The linter is also enabled with the recommended rule set. You can run both together before committing:
+
+```bash
+pnpm biome check --write .
+```
+
+Biome skips `dist/`, `node_modules/`, `pnpm-lock.yaml`, `.min.json` files, and bundled assets automatically.
+
+## Adding a Game
+
+To request a game be added to the site, open an issue using the **Game Request** template on GitHub. Provide the following information:
+
+- **Game name** — the full name of the game
+- **Direct link** — a specific URL to the game (e.g. `crazygames.com/game-name`). Do not provide Google Search links, as these cause the issue to be closed
+- **Category** *(optional)* — the genre or classification, such as Multiplayer, Emulator, FPS, or Sports
+
+If you want to add a game yourself via a pull request, remember to minify the updated `games.json` and commit the result to `games.min.json` as well (see step 4 of the checklist above).
+
+## Reporting Bugs
+
+To report a bug, open an issue using the **Bug Report** template on GitHub. A complete report includes:
+
+- A clear description of the bug
+- Steps to reproduce it
+- What you expected to happen
+- Screenshots if applicable
+- Your device, OS, and browser
+
+<Note>
+  Do not include personal information such as email addresses or names in bug reports.
+</Note>
+
+## Development Setup
+
+Setting up a local development environment follows the same steps as a standard installation — no build step is required.
+
+```bash
+pnpm install
+pnpm start
+```
+
+The server detects that `dist/` has no `vendor-map.cjs` manifest and falls back to serving files directly from `static/`. All asset paths remain at their original locations and your edits are reflected immediately on the next page load.
+
+<Tip>
+  Join the [T.O.P Discord server](https://discord.gg/Interstellar) before opening a pull request. The community can help you validate your approach, answer questions, and flag anything that might need attention before review — saving time for everyone involved.
+</Tip>

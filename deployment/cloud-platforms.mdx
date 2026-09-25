@@ -1,0 +1,65 @@
+---
+title: "Deploy T.O.P to Heroku, Koyeb, and Render"
+sidebarTitle: "Cloud Platforms"
+description: "One-click deploy T.O.P to Heroku or Koyeb, or set up a Docker-based Render web service using the included render.yaml."
+---
+
+T.O.P can be deployed to several managed cloud platforms with minimal configuration. Heroku and Koyeb both offer one-click deploy buttons that clone the repository and set everything up automatically. Render detects the included `render.yaml` and builds the project as a Docker web service. All three options are free-tier friendly and require no local tooling beyond a browser.
+
+## Supported Platforms
+
+<CardGroup cols={2}>
+  <Card title="Heroku" icon="cloud">
+    Heroku's one-click deploy button forks the Interstellar repository into your account and creates a new dyno with the correct buildpack automatically. Click the button below or use the URL directly.
+
+    **Deploy URL:**
+    ```
+    https://heroku.com/deploy/?template=https://github.com/UseInterstellar/Interstellar
+    ```
+
+    Navigate to that URL in your browser (or click the **Deploy to Heroku** button in the Interstellar GitHub README) and follow the on-screen prompts to create the app.
+  </Card>
+
+  <Card title="Koyeb" icon="server">
+    Koyeb supports one-click deployment from a public GitHub repository. The deploy link below pre-fills the repository URL so you only need to confirm the service settings and click **Deploy**.
+
+    **Deploy URL:**
+    ```
+    https://app.koyeb.com/deploy?type=git&repository=github.com/UseInterstellar/Interstellar
+    ```
+
+    Koyeb will build the project from source and expose it on a public `.koyeb.app` subdomain.
+  </Card>
+
+  <Card title="Render" icon="rectangle-terminal">
+    Render detects the `render.yaml` included in the repository and configures a Docker-based web service automatically. The service is defined as:
+
+    ```yaml
+    services:
+      - type: web
+        name: edu
+        env: docker
+        plan: free
+    ```
+
+    To deploy, add the Interstellar GitHub repository as a new **Web Service** in the Render dashboard. Render will read `render.yaml`, build the Docker image from the included `Dockerfile`, and start the service on the free plan. No manual configuration is needed.
+  </Card>
+
+  <Card title="Replit" icon="circle-xmark">
+    Replit was previously a popular free hosting option for Interstellar. As of **January 1st, 2024**, Replit [no longer offers free hosting](https://blog.replit.com/hosting-changes) for always-on applications.
+
+    Use **GitHub Codespaces** instead — see the [Codespaces deployment guide](/deployment/github-codespaces) for instructions.
+  </Card>
+</CardGroup>
+
+## PORT Environment Variable
+
+Every cloud platform injects its own port number at runtime via the `PORT` environment variable. T.O.P's server reads `process.env.PORT` and falls back to `8080` if it is not set. You do not need to hard-code a port — simply make sure your platform is configured to pass `PORT` and T.O.P will bind to whatever value it provides.
+
+<Warning>
+  Replit hosting is no longer free as of January 1st, 2024. Deployments on Replit's free tier will not stay online. Use GitHub Codespaces, Render, Heroku, or Koyeb instead.
+</Warning>
+
+<Tip>
+  For additional deployment methods and community-contributed guides — including alternative platforms not listed here — join the [Interstellar Discord community](https://discord.gg/interstellar). The community regularly shares new ways to host the proxy.
+</Tip>

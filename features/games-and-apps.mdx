@@ -1,0 +1,138 @@
+---
+title: "Built-in Games and Apps Catalogue"
+sidebarTitle: "Games & Apps"
+description: "T.O.P includes 300+ browser games and educational apps served from a local catalogue. Browse, search, and play without leaving the proxy."
+---
+
+T.O.P ships a curated catalogue of over 300 browser games and a separate catalogue of web apps, all accessible without leaving the proxy. Games are found at `/games` and apps at `/apps`. Both pages load their content from local JSON files, render a card grid in the browser, and route clicks through the same proxy engine used for manual URL navigation.
+
+## Catalogue files
+
+The two catalogues are stored as minified JSON arrays and fetched by `launcher.js` at page load:
+
+| File | Route | Contents |
+|---|---|---|
+| `static/assets/json/games.min.json` | `/games` | 300+ browser games |
+| `static/assets/json/apps.min.json` | `/apps` | Web apps, social, media, and emulators |
+
+Each entry carries a `name`, an `image` path, a `link` (or `links` array for multi-region titles), and a `categories` array used by the filter dropdown. In production builds the catalogue payload is XOR-encoded and decoded client-side using a per-build key so the listing is not trivially scraped.
+
+```json
+{
+  "name": "Slope",
+  "link": "https://watchdocumentaries.com/wp-content/uploads/games/slope/",
+  "image": "/assets/media/icons/slope.webp",
+  "categories": ["all"]
+}
+```
+
+## Sample game titles
+
+The games catalogue includes a wide range of titles across genres. A small sample:
+
+<CardGroup cols={3}>
+  <Card title="Slope" icon="person-skiing" />
+  <Card title="Run 3" icon="person-running" />
+  <Card title="Minecraft Classic" icon="cube" />
+  <Card title="1v1.LOL Reloaded" icon="crosshairs" />
+  <Card title="Cookie Clicker" icon="cookie" />
+  <Card title="DOOM" icon="skull" />
+  <Card title="Happy Wheels" icon="bicycle" />
+  <Card title="Among Us (Scratch)" icon="user-secret" />
+  <Card title="The Impossible Quiz" icon="circle-question" />
+  <Card title="Fireboy and Watergirl" icon="fire" />
+  <Card title="Gartic Phone" icon="pencil" />
+  <Card title="Minecraft Classic" icon="cube" />
+</CardGroup>
+
+Additional highlights include Swordbattle.io, Arras.io, Territorial.io, skribbl.io, Tunnel Rush, Duck Life 1–4, Papa's Burgeria / Cheeseria / Freezeria, Age of War, Snow Rider 3D, Buckshot Roulette, Tiny Fishing, bloxd.io, and many more.
+
+## Game categories
+
+The filter dropdown on the `/games` page exposes the following categories:
+
+| Value | Label |
+|---|---|
+| `all` | All |
+| `2P` | Multiplayer |
+| `sports` | Sports |
+| `flash` | Flash |
+| `emu` | Emulator |
+| `local` | Local |
+| `android` | Android Emulator |
+
+Select a category from the dropdown or type in the search bar to narrow the visible cards simultaneously.
+
+## Search and filtering
+
+Both pages share the same filter logic implemented in `launcher.js`. The search input and category dropdown call `applyFilters()`, which hides any card whose name does not match the search term or whose category list does not include the selected value.
+
+```js
+// launcher.js — filter logic
+function applyFilters() {
+  const searchTerm = (document.getElementById("search")?.value ?? "").toLowerCase();
+  const selectedCategories = Array.from(
+    document.querySelectorAll("#category option:checked")
+  ).map(option => option.value);
+
+  Array.from(document.getElementsByClassName("column")).forEach(card => {
+    const appName = card.getElementsByTagName("p")[0].textContent.toLowerCase();
+    const categories = card.getAttribute("data-category").split(" ");
+
+    const matchesSearch = !searchTerm || appName.includes(searchTerm);
+    const matchesCategory =
+      selectedCategories.length === 0 ||
+      selectedCategories.some(cat => categories.includes(cat));
+
+    card.style.display = matchesSearch && matchesCategory ? "block" : "none";
+  });
+}
+```
+
+## Pinning games and apps
+
+Any card (except the two special cards at the top of each page) can be pinned. Clicking the pin button on a card moves it into the pinned section above the main grid. Pins are stored in `localStorage` per-page (`Gpinned` for games, `Apinned` for apps) so they survive page reloads.
+
+## Custom game / app
+
+<CardGroup cols={2}>
+  <Card title="Create Custom Game / App" icon="plus">
+    The first special card in each catalogue opens a prompt asking for a title and a URL. The resulting card is saved to `localStorage` and rendered in the pinned section immediately — no page reload needed.
+  </Card>
+  <Card title="Request A Game / App" icon="envelope">
+    The second special card links to a Google Form where users can request new titles to be added to the catalogue.
+  </Card>
+</CardGroup>
+
+## GitHub game asset proxy (`/gh-games`)
+
+Some games in the catalogue are hosted on GitHub and served through T.O.P's own asset proxy at `/gh-games/:path` rather than directly from `raw.githubusercontent.com`. This reduces direct client-to-GitHub traffic and allows the server to apply long-lived caching headers.
+
+Four GitHub repositories are mirrored:
+
+```js
+// src/games.js
+const ghGamesBases = {
+  "/gh-games/1/": "https://raw.githubusercontent.com/qrs/x/fixy/",
+  "/gh-games/2/": "https://raw.githubusercontent.com/3v1/V5-Assets/main/",
+  "/gh-games/3/": "https://raw.githubusercontent.com/3v1/V5-Retro/master/",
+  "/gh-games/4/": "https://raw.githubusercontent.com/xbubbo/V6-Assets/main/",
+};
+```
+
+The proxy forwards `If-None-Match` headers from the browser and passes `ETag` and `Last-Modified` headers back so conditional requests work correctly. Every successful asset response is served with a one-year immutable cache header:
+
+```js
+res.writeHead(200, {
+  "Content-Type": contentType,
+  "Cache-Control": "public, max-age=31536000, immutable",
+  ...(etag && { ETag: etag }),
+  ...(lastModified && { "Last-Modified": lastModified }),
+});
+```
+
+The `/gh-games` route is rate-limited to **50 requests per minute** per IP.
+
+<Note>
+  Game assets fetched through `/gh-games` are cached by the browser for a full year (`max-age=31536000, immutable`). After the first load, subsequent visits to the same game will be served entirely from the browser cache with no network round-trip to the server or GitHub.
+</Note>

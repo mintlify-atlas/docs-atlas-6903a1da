@@ -1,0 +1,75 @@
+---
+title: "Deploy T.O.P via GitHub Codespaces"
+sidebarTitle: "Codespaces"
+description: "Run T.O.P in a free GitHub Codespace with a public URL. Create a Codespace, install dependencies, start the server, and set port visibility to public."
+---
+
+GitHub Codespaces gives you a full cloud development environment with a publicly accessible URL — making it one of the fastest ways to get T.O.P running without any local setup or server costs. The steps below walk through creating a Codespace from the Interstellar repository and exposing the proxy to the internet.
+
+## First-time Setup
+
+<Steps>
+  <Step title="Create a GitHub account">
+    If you do not already have one, sign up for a free account at [github.com](https://github.com).
+  </Step>
+
+  <Step title="Open a Codespace">
+    Navigate to the Interstellar repository on GitHub. Click the green **Code** button, select the **Codespaces** tab, and click **Create Codespace on main**. GitHub will provision a cloud environment and open a VS Code editor in your browser.
+  </Step>
+
+  <Step title="Install dependencies and start the server">
+    In the terminal at the bottom of the editor, paste the following command and press Enter:
+
+    ```bash
+    pnpm i && pnpm start
+    ```
+
+    This installs all required packages and immediately starts the T.O.P server.
+  </Step>
+
+  <Step title="Make the port public">
+    As soon as the server starts, a popup will appear at the bottom-right of the screen. Click **Make public** to expose the port to the internet.
+
+    <Warning>
+      You **must** click **Make public** or the proxy will not function correctly. If you see a `RangeError` when trying to use the proxy, go back and confirm that you clicked **Make public** on the port visibility popup.
+    </Warning>
+  </Step>
+
+  <Step title="Access the proxy">
+    Open the **Ports** tab in the bottom panel of the editor. Your forwarded port will be listed there with its public URL — click it to open T.O.P in your browser.
+  </Step>
+</Steps>
+
+## Returning to an Existing Codespace
+
+On subsequent visits to the same Codespace you do not need to reinstall dependencies. Simply open the terminal and run:
+
+```bash
+pnpm start
+```
+
+## Troubleshooting: No Popup Appeared
+
+If the port visibility popup did not appear when the server started, follow these steps manually:
+
+<Steps>
+  <Step title="Start the server on an explicit port">
+    Stop any running server and restart it with `PORT` set explicitly (replace `8080` with any available port number):
+
+    ```bash
+    PORT=8080 pnpm start
+    ```
+  </Step>
+
+  <Step title="Forward the port manually">
+    Open the **Ports** tab in the bottom panel, click **Forward a Port**, and type the port number you used above.
+  </Step>
+
+  <Step title="Set visibility to public">
+    In the **Ports** tab, right-click the forwarded port's **Visibility** column and select **Port Visibility → Public**.
+  </Step>
+</Steps>
+
+<Note>
+  If you need to set the port to a number below `1023`, you must run the server with elevated privileges: `sudo PORT=1023 pnpm start`.
+</Note>

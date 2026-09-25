@@ -1,0 +1,120 @@
+---
+title: "Built-in Browser Tabs System"
+sidebarTitle: "Tabs System"
+description: "T.O.P's built-in tab manager lets you open multiple proxied pages simultaneously, navigate between them, and use DevTools — all within a single browser tab."
+---
+
+T.O.P includes a browser-within-a-browser interface accessible at `/tabs`. Each "tab" is an `<iframe>` that runs a fully independent proxied session, complete with its own navigation history. A toolbar at the top of the page provides an address bar, back/forward/reload controls, and actions for fullscreen, window popout, and DevTools. Multiple tabs can be open at once and rearranged by dragging.
+
+## Accessing the tabs system
+
+Navigate directly to `/tabs` in your browser. The Tabs button was removed from the navbar in v6.0.0 (per the CHANGELOG), but the route remains fully functional. You can also reach the tabs page by clicking a game or app card that has the `local` category — those entries open inside the tabs interface automatically.
+
+## Interface layout
+
+The tabs page (`tabs.html`) has three main regions:
+
+- **Side nav** (`#right-side-nav`) — the horizontal tab strip along the top with an **+** button to open new tabs. Can be toggled visible/hidden using the tab toggle button in the toolbar.
+- **Browser bar** (`.browser-bar`) — contains the address bar and all navigation/action buttons.
+- **Frame container** (`#frame-container`) — where the iframe for the active tab is rendered.
+
+## Navigation controls
+
+The toolbar exposes the following controls, all implemented in `tabs.js`:
+
+<CardGroup cols={2}>
+  <Card title="goHome()" icon="house">
+    Navigates the entire tabs page back to the T.O.P home page at `./`.
+  </Card>
+  <Card title="goBack() / goForward()" icon="arrows-left-right">
+    Calls `history.back()` or `history.forward()` on the active iframe's `contentWindow`, then updates the address bar to reflect the new URL.
+  </Card>
+  <Card title="reload()" icon="rotate-right">
+    Calls `location.reload()` on the active iframe's `contentWindow` and refreshes the displayed address.
+  </Card>
+  <Card title="popoutTab()" icon="up-right-from-square">
+    Opens the active iframe's current URL in a new `about:blank` window with a full-screen iframe — identical to the about:blank cloak. The tab title and favicon from `localStorage` are applied to the new window.
+  </Card>
+  <Card title="toggleDevTools()" icon="code">
+    Injects [Eruda](https://github.com/liriliri/eruda) into the active iframe via a `<script>` tag and calls `eruda.init()` / `eruda.show()`. Calling `toggleDevTools()` again destroys the Eruda instance.
+  </Card>
+  <Card title="toggleFullscreen()" icon="expand">
+    Calls `requestFullscreen()` on the active iframe's `documentElement`, or `exitFullscreen()` if fullscreen is already active.
+  </Card>
+</CardGroup>
+
+## Address bar
+
+The address bar (`#input`) displays the real (decoded) URL of the active tab. Scramjet URLs are decoded using `window.__urls.decodeUrl`; Ultraviolet URLs are decoded from their XOR-encoded path using `window.decode.xor`.
+
+The address bar obfuscates its display value by lacing zero-width Unicode characters through the shown URL when the input is not focused. This was introduced in v6.0.0 to prevent casual inspection. When the input gains focus the clean URL is shown, and copy events automatically strip zero-width characters from the clipboard payload.
+
+```js
+// tabs.js — zero-width lacing
+function laceZeroWidth(url) {
+  const points = Array.from(url);
+  let out = "";
+  for (let i = 0; i < points.length; i++) {
+    out += points[i];
+    if (i < points.length - 1)
+      out += ZERO_WIDTH[Math.floor(Math.random() * ZERO_WIDTH.length)];
+  }
+  return out;
+}
+```
+
+## Opening and closing tabs
+
+Clicking the **+** button calls `createNewTab()`, which:
+
+1. Creates a new `<li>` in the tab strip with a "New Tab N" label and a close button.
+2. Creates a new `<iframe>` in `#frame-container` with a restrictive `sandbox` attribute.
+3. Sets the new tab and iframe as active (removing the `active` class from all others).
+4. Navigates the iframe to the URL stored in `sessionStorage` (`GoUrl` for the first tab, `URL` for subsequent ones), or falls back to `/`.
+
+Each tab element and its matching iframe share the same `data-tab-id` attribute for look-up. Clicking the **×** button on a tab removes both the `<li>` and its iframe, and activates the first remaining tab.
+
+```js
+// tabs.js — tab identifier
+newTab.dataset.tabId = tabCounter;
+newIframe.dataset.tabId = tabCounter;
+```
+
+## Tab drag-and-drop reordering
+
+Tabs can be reordered by dragging them within the tab strip. The `dragstart`, `dragover`, and `dragend` events on `#tab-list` handle repositioning — the dragged tab is inserted before or after the drop target depending on relative position.
+
+## `_top` link interception
+
+Sites inside iframes sometimes use `target="_top"` on links or forms to break out of their frame. Because T.O.P's iframe `sandbox` does not include `allow-top-navigation`, these navigations would be silently blocked. Since v6.0.0, `tabs.js` intercepts `click` and `submit` events on `_top`-targeted elements inside the iframe and instead opens the destination in a new tab:
+
+```js
+// tabs.js — _top interception
+function handleTopNavigation(event) {
+  const source = event.target?.closest?.("a[target], area[target]");
+  if (source?.target?.toLowerCase() !== "_top") return;
+  event.preventDefault();
+  openInNewTab(source.href);
+}
+```
+
+POST form submissions targeting `_top` are retargeted to `_self` so they submit in place rather than being swallowed.
+
+## Service worker registration
+
+The tabs page registers `sw.js` for the `/uv/` scope independently of the home page, ensuring the service worker is always active even if the user navigates directly to `/tabs`.
+
+```js
+// tabs.js
+navigator.serviceWorker
+  .register("../sw.js", { scope: "/uv/" })
+  .catch(err => console.error("[SW] registration failed:", err));
+```
+
+## Keyboard shortcut — Escape key lock (Chrome)
+
+On Chrome, pressing Escape can exit fullscreen unexpectedly. The tabs page calls `navigator.keyboard.lock(["Escape"])` on every `resize` event to suppress the default Escape behaviour while the proxy is in fullscreen mode.
+
+<Tip>
+  The tabs system is most useful when you want to run multiple proxied pages at once — for example, keeping a game open in one tab while browsing in another — without opening multiple real browser windows that could be spotted in the taskbar.
+</Tip>

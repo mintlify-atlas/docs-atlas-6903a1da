@@ -1,0 +1,134 @@
+---
+title: "Tab Cloaking and About:Blank Masking in T.O.P"
+sidebarTitle: "Tab Cloaking"
+description: "T.O.P's tab cloaking disguises the browser tab with a custom title and favicon, or opens the proxy in an about:blank page to hide the URL from the address bar."
+---
+
+Tab cloaking makes T.O.P look like a different website at a glance. There are two independent cloaking mechanisms: **tab title and favicon replacement**, which changes what the browser tab shows, and **about:blank cloaking**, which opens the entire proxy inside a new window whose address bar shows only `about:blank`. Both are configured from the Settings page at `/settings`.
+
+## Tab title and favicon cloaking
+
+When tab cloaking is active, `main.js` reads the stored `name` and `icon` values from `localStorage` on every page load and applies them to the `<title>` and favicon `<link>` elements before the page finishes rendering — so the tab title updates immediately without a flash of the real name.
+
+```js
+// main.js — applied on DOMContentLoaded
+const cloakName = store.get("CustomName") || store.get("name");
+const cloakIcon = store.get("CustomIcon") || store.get("icon");
+if (cloakName) title.textContent = cloakName;
+if (cloakIcon) {
+  const safeIcon = reconstructSafeUrl(cloakIcon);
+  if (safeIcon) icon.setAttribute("href", safeIcon);
+}
+```
+
+URLs passed as favicon sources are validated by `reconstructSafeUrl`, which only allows `https:`, `http:`, and `data:` schemes — relative paths without a protocol are also permitted.
+
+### Preset cloaks
+
+The Settings page exposes a dropdown with dozens of school-friendly presets. Selecting one saves both the display name and the matching favicon to `localStorage` immediately.
+
+| Preset | Tab title shown |
+|---|---|
+| Classroom | Home |
+| Google Drive | My Drive - Google Drive |
+| Gmail | Gmail |
+| Google Meet | Google Meet |
+| Google Docs | Google Docs |
+| Canvas | Dashboard |
+| Schoology | Home \| Schoology |
+| Clever | Clever \| Portal |
+| Khan Academy | Dashboard \| Khan Academy |
+| IXL | IXL \| Dashboard |
+| Nearpod | Nearpod |
+| Desmos | Desmos \| Graphing Calculator |
+| Wikipedia | Wikipedia |
+| PowerSchool | Grades and Attendance |
+| DeltaMath | DeltaMath |
+| Edpuzzle | Edpuzzle |
+| Kami | Kami |
+| Naviance | Naviance Student |
+
+Favicons for every preset are stored locally under `/assets/media/favicon/` — no external request is made to fetch them.
+
+### Custom cloak
+
+If none of the presets fit, users can enter a custom tab title and a custom favicon URL in the fields below the dropdown. Custom values take priority over preset values and are stored under the `CustomName` and `CustomIcon` keys in `localStorage`.
+
+```js
+// settings.js — saving a custom cloak
+function saveCustomCloak() {
+  const nameVal = document.getElementById("custom-cloak-name").value.trim();
+  const iconVal = document.getElementById("custom-cloak-icon").value.trim();
+  if (nameVal) {
+    store.set("CustomName", nameVal);
+    store.set("name", nameVal);
+  }
+  if (iconVal) {
+    store.set("CustomIcon", iconVal);
+    store.set("icon", iconVal);
+  }
+}
+```
+
+Click **Reset** to clear any custom values and revert to the active preset.
+
+## About:blank cloaking
+
+About:blank cloaking opens the proxy in a brand-new browser window whose address bar displays `about:blank` instead of the proxy URL. The new window contains a full-screen `<iframe>` pointing at the current page, so the proxy continues to work normally while being invisible in the URL bar.
+
+```js
+// settings.js — AB() function
+const popup = open("about:blank", "_blank");
+
+const iframe = doc.createElement("iframe");
+iframe.src = location.href;
+// full-screen positioning applied via inline style
+doc.body.appendChild(iframe);
+
+// Original tab navigates away to a safe-looking site
+location.replace(panicLink);
+```
+
+After the popup opens, the original tab is silently redirected to a random plausible URL (Google Classroom, Google Drive, Khan Academy, etc.) so that even the originating tab no longer shows the proxy address.
+
+The popup window also hooks `window.onbeforeunload` to show a "Leave Site?" confirmation if the user tries to navigate away — mimicking the behaviour of a real web application.
+
+<Warning>
+  About:blank cloaking is not supported in Firefox. Attempting to use it will show an alert explaining this limitation. It also requires popups to be allowed for the proxy origin.
+</Warning>
+
+### Enabling auto-AB on page load
+
+The Settings page includes a toggle (`ab-settings-switch`) that stores `ab = "true"` in `localStorage`. Pages can read this flag to open the about:blank popup automatically when the proxy is first visited.
+
+## Panic key
+
+The panic key is a keyboard shortcut that instantly navigates the current tab to a configurable URL to hide the proxy at a moment's notice. The default key is the backtick (`` ` ``) and the default destination is `https://classroom.google.com/`.
+
+Both the key sequence and the destination URL are set from the Settings page:
+
+```js
+// main.js — panic key handler
+const eventKey = JSON.parse(store.get("eventKey")) || ["`"];
+const rawPLink = store.get("pLink") || "https://classroom.google.com/";
+
+document.addEventListener("keydown", event => {
+  pressedKeys.push(event.key);
+  const recentKeys = pressedKeys.slice(-eventKey.length);
+  if (recentKeys.length === eventKey.length &&
+      eventKey.every((key, i) => key === recentKeys[i])) {
+    panicAnchor.click();
+    pressedKeys = [];
+  }
+});
+```
+
+Multi-key sequences are supported — enter a comma-separated list of keys in the panic key field (e.g. `Escape,Escape` to trigger on two rapid Escapes).
+
+<Note>
+  Tab cloaking changes only what is visible in the browser tab bar and address bar — it does not affect the content being proxied or provide any additional network-level privacy. Anyone inspecting the page source or DevTools Network panel can still see the underlying proxy traffic.
+</Note>
+
+<Tip>
+  Use the **Google Classroom** or **Google Drive** presets to make the tab look like the tools most commonly open during a school day. Pair the preset with the panic key pointed at `https://classroom.google.com/` for a consistent cover story.
+</Tip>

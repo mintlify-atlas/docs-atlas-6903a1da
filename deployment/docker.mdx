@@ -1,0 +1,78 @@
+---
+title: "Run T.O.P with Docker"
+sidebarTitle: "Docker"
+description: "Build and run T.O.P in a Docker container using the included Dockerfile. Set PORT and config environment variables for production use."
+---
+
+T.O.P ships with a ready-to-use `Dockerfile` based on the slim Debian Bookworm Node.js image. Containerising the proxy keeps it isolated from the host system and makes it straightforward to deploy anywhere that runs Docker — including cloud platforms such as Render.
+
+## The Dockerfile
+
+The project's `Dockerfile` is reproduced in full below. It sets `NODE_ENV` to `production`, copies `package.json` first to take advantage of Docker's layer cache, installs dependencies with npm, copies the rest of the source, and launches the server directly with `node`.
+
+```dockerfile
+FROM node:bookworm-slim
+ENV NODE_ENV=production
+
+WORKDIR /app
+
+COPY ["package.json", "./"]
+
+RUN npm install
+
+COPY . .
+
+CMD [ "node", "src/server.js" ]
+```
+
+<Note>
+  `NODE_ENV` is set to `production` inside the image. This means development-only dependencies are not installed and Node.js runs with production optimisations enabled.
+</Note>
+
+## Building the Image
+
+Run the following command from the root of the repository to build a local Docker image tagged `interstellar`:
+
+```bash
+docker build -t interstellar .
+```
+
+## Running the Container
+
+### Default (port 8080)
+
+Start a container and map host port `8080` to the container's port `8080`:
+
+```bash
+docker run -p 8080:8080 interstellar
+```
+
+### Custom PORT
+
+If you need the server to listen on a different port, pass the `PORT` environment variable and adjust the host-side mapping accordingly:
+
+```bash
+docker run -p 3000:8080 -e PORT=8080 interstellar
+```
+
+### Password Protection
+
+T.O.P supports optional password protection via the `challenge` flag in `config.js`. To enable it, first open `config.js` and set `challenge` to `true`, then pass `config=true` as an environment variable when running the container:
+
+```bash
+docker run -p 8080:8080 -e config=true interstellar
+```
+
+## Deploying to Render with Docker
+
+The repository includes a `render.yaml` that configures a Render web service using the Docker environment:
+
+```yaml
+services:
+  - type: web
+    name: edu
+    env: docker
+    plan: free
+```
+
+Render automatically detects this file when you add the repository as a new web service. Because `env` is set to `docker`, Render will build the image from the project's `Dockerfile` rather than using a managed runtime. See the [Cloud Platforms](/deployment/cloud-platforms) page for the full Render setup walkthrough.

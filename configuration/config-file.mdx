@@ -1,0 +1,77 @@
+---
+title: "Configure T.O.P with config.js"
+sidebarTitle: "Config File"
+description: "T.O.P is configured through config.js at the project root. Set password protection, user credentials, and start the server with optional environment variables."
+---
+
+The primary configuration file for T.O.P is `config.js`, located at the root of your project. It controls whether password protection is active and which credentials are accepted. Two additional environment variables let you override the listening port and activate the auth middleware at startup without touching the file.
+
+## The config.js file
+
+```js
+const config = {
+  challenge: false, // Set to true to enable password protection
+  users: {
+    interstellar: "password", // username: 'password'
+  },
+};
+export default config;
+```
+
+<Note>
+  The `config.js` file uses ES module syntax (`export default`) because
+  `package.json` sets `"type": "module"`. Do not change the export style or the
+  server will fail to import it.
+</Note>
+
+## Fields
+
+<ParamField path="challenge" type="boolean" default="false">
+  When `true`, T.O.P wraps every route with HTTP Basic Auth via the
+  `express-basic-auth` middleware. Visitors are prompted by the browser for a
+  username and password before any page is served. Set to `false` (or leave it
+  at the default) to leave the instance open.
+</ParamField>
+
+<ParamField path="users" type="object">
+  A plain key-value map of accepted credentials, where each key is a username
+  and its value is the corresponding password. You can add as many pairs as you
+  need. This field is only consulted when `challenge` is `true`.
+
+  ```js
+  users: {
+    alice: "hunter2",
+    bob: "correct-horse",
+  }
+  ```
+</ParamField>
+
+## Environment variables
+
+### PORT
+
+T.O.P listens on port `8080` by default. Set the `PORT` environment variable before starting the server to use a different port.
+
+<CodeGroup>
+```bash Linux / macOS
+PORT=3000 pnpm start
+```
+
+```powershell Windows PowerShell
+$env:PORT=3000; pnpm start
+```
+</CodeGroup>
+
+### config
+
+The `config` environment variable activates the `challenge` middleware at runtime without editing `config.js`. The value must be `true` and `challenge` must also be set to `true` in the file for protection to take effect.
+
+<CodeGroup>
+```bash Linux / macOS
+config=true pnpm start
+```
+
+```powershell Windows PowerShell
+$env:config=true; pnpm start
+```
+</CodeGroup>

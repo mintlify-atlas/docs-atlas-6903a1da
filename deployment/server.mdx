@@ -1,0 +1,125 @@
+---
+title: "Deploy T.O.P on a VPS or Dedicated Server"
+sidebarTitle: "Server"
+description: "Deploy T.O.P on any Linux VPS or server running Node.js 16+. Clone, install with pnpm or npm, configure the PORT, and start with a single command."
+---
+
+Self-hosting T.O.P on your own Linux VPS or dedicated server gives you full control over the proxy and its configuration. All you need is a machine with Node.js 16 or higher, a compatible npm version, and git — no other infrastructure is required.
+
+## Prerequisites
+
+Before getting started, make sure the following are available on your server:
+
+- **Node.js** >= 16.0.0
+- **npm** >= 7.0.0
+- **git**
+
+## Installation
+
+<Steps>
+  <Step title="Clone the repository">
+    Clone the Interstellar repository from GitHub and move into the project directory.
+
+    ```bash
+    git clone https://github.com/UseInterstellar/Interstellar
+    cd Interstellar
+    ```
+
+    If you prefer the ad-free version of the proxy, use the `Ad-Free` branch instead:
+
+    ```bash
+    git clone --branch Ad-Free https://github.com/UseInterstellar/Interstellar
+    cd Interstellar
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    Install all required packages using your preferred package manager.
+
+    <CodeGroup>
+      ```bash pnpm
+      pnpm i
+      ```
+
+      ```bash npm
+      npm i
+      ```
+
+      ```bash bun
+      bun i
+      ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Start the server">
+    Start T.O.P using the `start` script. By default the server listens on port **8080**.
+
+    <CodeGroup>
+      ```bash pnpm
+      pnpm start
+      ```
+
+      ```bash npm
+      npm run start
+      ```
+
+      ```bash bun
+      bun start
+      ```
+    </CodeGroup>
+  </Step>
+</Steps>
+
+## Configuring the PORT
+
+The server reads the `PORT` environment variable at startup. If not set, it defaults to `8080` (as defined in `src/server.js`). Pass it inline before your start command to override:
+
+```bash
+PORT=3000 pnpm start
+```
+
+## Production Build
+
+Running `pnpm build` compiles an optimized output into the `dist/` directory. When `dist/` contains a valid `.runtime/vendor-map.cjs`, the server automatically serves from `dist/` instead of `static/`. This build path randomizes internal page routes for additional obscurity.
+
+```bash
+pnpm build
+pnpm start
+```
+
+## Updating
+
+To pull the latest changes from GitHub, run the following commands from inside the project directory:
+
+```bash
+cd Interstellar
+git pull --force --allow-unrelated-histories
+```
+
+After pulling, reinstall dependencies to pick up any new or updated packages:
+
+<CodeGroup>
+  ```bash pnpm
+  pnpm i
+  ```
+
+  ```bash npm
+  npm i
+  ```
+
+  ```bash bun
+  bun i
+  ```
+</CodeGroup>
+
+<Warning>
+  `git pull --force --allow-unrelated-histories` may overwrite any local changes you have made. Back up your custom configuration before updating.
+</Warning>
+
+## Keeping the Server Running
+
+Once you close your terminal session the node process will stop unless it is managed by a process supervisor. For production use, run T.O.P under **PM2** or a **systemd** service so it restarts automatically on crashes and server reboots.
+
+<Note>
+  T.O.P is a dynamic Node.js application and **cannot** be deployed to static web hosts such as Netlify, Cloudflare Pages, or GitHub Pages. You must use a platform that supports running a persistent Node.js process.
+</Note>

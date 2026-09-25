@@ -1,0 +1,79 @@
+---
+title: "Security Policy and Vulnerability Reporting"
+sidebarTitle: "Security"
+description: "T.O.P supports only the current release. Report vulnerabilities privately via GitHub Security Advisories or the Discord server ticket system."
+---
+
+T.O.P follows a current-release support policy: only the most recent versions of the project receive security updates and patches. If you are running an older version, you are encouraged to upgrade as soon as possible. This page explains which versions are supported, how to report a vulnerability, and how to keep your installation up to date.
+
+## Supported Versions
+
+| Version | Supported |
+|---|---|
+| V6.x | ✅ Supported |
+| V5.4.x | ✅ Supported |
+| V5.3.x | ❌ Not supported |
+| V5.2.x | ❌ Not supported |
+| < V5.0 | ❌ Not supported |
+
+<Warning>
+  Older versions do not receive security updates. If you are running an unsupported version, vulnerabilities will not be patched and your deployment may be at risk. Always run the latest version.
+</Warning>
+
+## Reporting a Vulnerability
+
+If you discover a security vulnerability in T.O.P, please report it privately. Do not open a public GitHub issue for security-sensitive findings.
+
+You have two options:
+
+<CardGroup cols={2}>
+  <Card title="GitHub Security Advisory" icon="shield-halved" href="https://github.com/InterstellarNetwork/Interstellar/security/advisories/new">
+    Open a private security advisory directly on GitHub. Your report will only be visible to the repository maintainers until it is resolved and responsibly disclosed.
+  </Card>
+  <Card title="Discord Ticket" icon="discord" href="https://discord.gg/Interstellar">
+    Join the T.O.P Discord server and open a support ticket describing the vulnerability. A maintainer will follow up with you privately.
+  </Card>
+</CardGroup>
+
+Providing as much detail as possible — including steps to reproduce, affected versions, and potential impact — helps maintainers triage and resolve the issue faster.
+
+## Why Staying Updated Matters
+
+Only current supported versions receive security fixes. Running an outdated deployment means:
+
+- Known vulnerabilities will not be patched in your version
+- You miss hardening improvements shipped in newer releases, including build-pipeline obfuscation, XOR codec randomization, and path randomization introduced in V6.0
+- Rate-limiting protections and other server-level safeguards may be absent or incomplete
+
+## Built-In Rate Limiting
+
+The T.O.P server enforces rate limiting out of the box on all supported versions — no configuration is required:
+
+| Endpoint | Limit |
+|---|---|
+| General (all routes) | 100 requests / minute |
+| `/gh-games` | 50 requests / minute |
+
+These limits are built into the server and are not adjustable via `config.js`.
+
+## How to Update
+
+**If you have a fork of the repository** on GitHub, sync it via the GitHub UI:
+
+1. Navigate to your fork on GitHub
+2. Click **Sync fork** → **Update branch**
+
+Your fork will be brought up to date with the upstream `main` branch.
+
+**If you have T.O.P installed locally**, pull the latest changes and reinstall dependencies:
+
+```bash
+git pull
+npm i
+```
+
+<Note>
+  After updating, restart the server to apply all changes. You can also re-run `pnpm build` to generate a fresh set of obfuscated assets with new randomized paths, codec keys, and identifiers for your updated deployment.
+</Note>
+
+If you run into any issues during the update process, reach out on the [Discord server](https://discord.gg/Interstellar) for assistance.

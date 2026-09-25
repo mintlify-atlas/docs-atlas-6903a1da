@@ -1,0 +1,73 @@
+---
+title: "T.O.P: Modern Self-Hosted Web Proxy with Games"
+sidebarTitle: "Introduction"
+description: "T.O.P (Interstellar) is a self-hosted web proxy built on Node.js, combining Ultraviolet and Scramjet proxy engines with 300+ games, themes, and tab cloaking."
+---
+
+T.O.P, distributed as the **Interstellar** project, is a modern, full-featured web proxy served by a Node.js/Express backend. Since 2022 it has served over 15 million users, combining a polished, accessible interface with two independent proxy engines, a catalogue of 300+ built-in games and apps, and a suite of privacy tools — all packaged in a single self-hosted Node.js application.
+
+## What T.O.P Is
+
+T.O.P runs as an **Express HTTP server** (`src/server.js`) that serves a rich client-side frontend and handles all proxy traffic on the same process. When a user submits a URL through the search bar, the request is routed through one of two proxy engines — Ultraviolet or Scramjet — both of which encode the target URL using an **XOR codec whose key is randomised per production build**, so no two deployed instances produce the same encoded URLs. WebSocket tunnelling is handled by the **Wisp** transport layer, which upgrades HTTP connections transparently on the same port.
+
+### Proxy Engines
+
+| Engine | Package | Role |
+|---|---|---|
+| **Ultraviolet (UV)** | `@titaniumnetwork-dev/ultraviolet` | Mature service-worker proxy; high compatibility across sites |
+| **Scramjet** | `@mercuryworkshop/scramjet` | Next-generation proxy engine; the current default in v6 |
+
+Both engines are served directly from `node_modules` at runtime (or bundled and scope-randomised in a production build), and both share the same Wisp WebSocket back-end via `@mercuryworkshop/wisp-js`.
+
+## Key Features
+
+- **300+ games and apps** — an integrated catalogue accessible from `/games` and `/apps`, with hard-cached manifests for fast loading.
+- **Tab cloaking** — disguise the browser tab with a custom title and favicon so the page appears to be something else entirely.
+- **About:blank masking** — open proxied content in a fresh `about:blank` context to remove it from the browser's address bar and history.
+- **Password protection** — optional HTTP Basic Auth gate controlled by a single flag in `config.js`, powered by `express-basic-auth`.
+- **Built-in tab system** — a full multi-tab UI (`/tabs`) with obfuscated address bars, proper `_top` link interception, and self-contained navigation.
+- **Multiple UI themes** — an overhauled theme system that applies the selected theme immediately on page load to eliminate flash-of-unstyled-content.
+- **Inspect Element** — developer tools accessible directly from the interface.
+- **Now.gg and Geforce NOW support** — cloud gaming integrations built into the catalogue.
+- **Rate limiting** — per-route request throttling via `express-rate-limit` to protect self-hosted deployments.
+- **Production build pipeline** — `pnpm build` obfuscates JavaScript, hardens HTML, minifies CSS, and randomises proxy scopes and page routes.
+
+## What T.O.P Is Not
+
+T.O.P is **not a static site** and **not an importable library**. It is a server application — the proxy engines rely on service workers registered under dynamic scopes, and WebSocket upgrades must be handled by the same Node.js HTTP server that serves the frontend. There is no static export or CDN-deployable build artifact.
+
+<Note>
+  T.O.P **cannot** be deployed to static web hosts such as Netlify, Cloudflare Pages, or GitHub Pages. These platforms do not support persistent Node.js processes or WebSocket upgrades, both of which are required for the proxy to function.
+</Note>
+
+## Supported Platforms
+
+Any environment that can run a persistent Node.js process is supported:
+
+- **VPS or dedicated server** (Ubuntu, Debian, etc.) — the recommended production path
+- **Docker** — run the server inside a container with the port exposed
+- **GitHub Codespaces** — instant zero-cost development or demo environment
+- **Heroku** — one-click deploy template available
+- **Koyeb** — one-click deploy template available
+- **Render / OnRender** — community-supported deployment guides available on the Discord server
+
+## License
+
+T.O.P (Interstellar) is released under the **GPL-3.0-or-later** license. Any derivative work must be distributed under the same terms.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="bolt" href="/quickstart">
+    Clone the repo, install dependencies, and have the proxy running locally in under five minutes.
+  </Card>
+  <Card title="Server Deployment" icon="server" href="/deployment/server">
+    Deploy T.O.P to a VPS, Heroku, Koyeb, or Render for a public-facing instance.
+  </Card>
+  <Card title="Configuration File" icon="sliders" href="/configuration/config-file">
+    Explore every option in `config.js`, including password protection and user management.
+  </Card>
+  <Card title="Proxy Engines" icon="globe" href="/features/proxy">
+    Learn how Ultraviolet and Scramjet encode URLs and how to switch between them.
+  </Card>
+</CardGroup>

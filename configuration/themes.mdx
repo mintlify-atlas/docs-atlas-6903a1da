@@ -1,0 +1,178 @@
+---
+title: "UI Themes and Customization in T.O.P"
+sidebarTitle: "Themes"
+description: "T.O.P ships with 14+ built-in themes including Catppuccin, Gruvbox, Tokyo Night, Nord, and Synthwave. Change themes in Settings or create your own from a template."
+---
+
+T.O.P includes over 18 built-in themes split into two categories: a set of named color themes and four Catppuccin palette variants. Every theme is a plain CSS file in `static/assets/css/themes/` that overrides a set of CSS custom properties on `:root`. The active theme is stored in the browser and applied on page load — no server restart is required when switching.
+
+## Theme categories
+
+### Color themes
+
+Stored in `static/assets/css/themes/colors/`:
+
+| Theme name | File |
+|---|---|
+| Default | *(built into `global.css`)* |
+| Light | `light.css` |
+| Black (OLED) | `oled.css` |
+| Sky | `sky.css` |
+| Tokyo Night | `tokyo-night.css` |
+| Nord | `nord.css` |
+| Rosé Pine | `rose-pine.css` |
+| Gruvbox | `gruvbox.css` |
+| Gruvbox Light | `gruvbox-light.css` |
+| Everforest | `everforest.css` |
+| Monokai | `monokai.css` |
+| One Dark | `one-dark.css` |
+| Solarized | `solarized.css` |
+| Solarized Light | `solarized-light.css` |
+| Synthwave '84 | `synthwave.css` |
+
+### Catppuccin themes
+
+Stored in `static/assets/css/themes/catppuccin/`:
+
+| Theme name | File |
+|---|---|
+| Mocha | `mocha.css` |
+| Macchiato | `macchiato.css` |
+| Frappe | `frappe.css` |
+| Latte | `latte.css` |
+
+All Catppuccin variants share a common `palette.css` that defines the full Catppuccin color tokens (`--ctp-mocha-base`, `--ctp-mocha-mauve`, etc.). Each variant file `@import`s the palette and maps the shared tokens to the standard T.O.P CSS variables.
+
+## How to change the theme
+
+<Steps>
+  ### Open Settings
+
+  Navigate to `/settings` in your browser.
+
+  ### Select a theme
+
+  Scroll to the **Visual Customization** card and choose any theme from the **Theme** dropdown. The page reloads immediately with the new theme applied.
+</Steps>
+
+The selection is persisted in browser storage by `settings.js` via `store.set("theme", value)` and restored on every page load. Selecting **Default** removes the stored preference and falls back to the built-in default appearance.
+
+## CSS variables
+
+Every theme is built on the same set of CSS custom properties. The canonical reference is `static/assets/css/themes/template.css`, which provides placeholder values for every token:
+
+```css
+/* Theme template — copy, rename, set the values. Only override tokens here, no element rules. */
+:root {
+   /* Surfaces */
+   --background: #ddd;
+   --surface: #d5d5d5;
+   --surface-card: #d5d5d5;
+   --surface-tile: #cacaca;
+   --surface-raised: #c2c2c2;
+   --surface-overlay: #cacaca;
+   --surface-input: #cacaca;
+   --surface-button: #cccccc;
+   --surface-button-hover: #bebebe;
+   --surface-hover: #c2c2c2;
+   --surface-active: #bbbbbb;
+   --surface-nav: rgba(0, 0, 0, 0.03);
+   --surface-nav-active: rgba(0, 0, 0, 0.06);
+
+   /* Borders */
+   --border: rgba(0, 0, 0, 0.1);
+   --border-subtle: rgba(0, 0, 0, 0.05);
+   --border-strong: rgba(0, 0, 0, 0.18);
+
+   /* Text */
+   --text: #000;
+   --text-muted: #555;
+   --text-faint: #888;
+
+   /* Accent */
+   --accent: #000;
+   --accent-hover: #333;
+   --accent-text: #fff;
+
+   /* Status */
+   --success: #2e9e4f;
+   --warning: #b8860b;
+   --danger: #c0392b;
+
+   /* Toggle */
+   --toggle-on: var(--success);
+   --toggle-off: #999;
+
+   /* Tabs */
+   --tab: #d5d5d5;
+   --tab-active: #bbb;
+   --tab-hover: #c2c2c2;
+   --tab-border: transparent;
+
+   /* Assets */
+   --background-image: var(--background);
+}
+```
+
+<Tip>
+  `static/assets/css/themes/template.css` is the canonical reference for all
+  available CSS variables. Copy it, give it a new name, set your values, and
+  drop it into the `colors/` or `catppuccin/` directory. Only override the
+  tokens you need — any property not redefined will inherit from the default
+  theme.
+</Tip>
+
+## Creating a custom theme
+
+<Steps>
+  ### Copy the template
+
+  ```bash
+  cp static/assets/css/themes/template.css static/assets/css/themes/colors/my-theme.css
+  ```
+
+  ### Set your values
+
+  Open the new file and replace the placeholder hex values with your chosen colors. You only need to include the properties you want to change.
+
+  ### Wire it up
+
+  To make your theme selectable from the Settings page, add an `<option>` entry to the theme dropdown in `static/settings.html` and handle the corresponding value in `static/assets/js/main.js` where themes are loaded.
+</Steps>
+
+<Note>
+  `static/assets/css/themes/template.css` is intentionally excluded from the
+  production build by `src/build.js` — it is a development reference only and
+  is never served to users.
+</Note>
+
+## All available themes
+
+<Accordion title="Color themes (15)">
+  | Settings label | Dropdown value | File |
+  |---|---|---|
+  | Default | `d` | *(built-in)* |
+  | Light | `light` | `colors/light.css` |
+  | Black | `oled` | `colors/oled.css` |
+  | Sky | `sky` | `colors/sky.css` |
+  | Tokyo Night | `tokyoNight` | `colors/tokyo-night.css` |
+  | Nord | `nord` | `colors/nord.css` |
+  | Rosé Pine | `rosePine` | `colors/rose-pine.css` |
+  | Gruvbox | `gruvbox` | `colors/gruvbox.css` |
+  | Gruvbox Light | `gruvboxLight` | `colors/gruvbox-light.css` |
+  | Everforest | `everforest` | `colors/everforest.css` |
+  | Monokai | `monokai` | `colors/monokai.css` |
+  | One Dark | `oneDark` | `colors/one-dark.css` |
+  | Solarized | `solarized` | `colors/solarized.css` |
+  | Solarized Light | `solarizedLight` | `colors/solarized-light.css` |
+  | Synthwave '84 | `synthwave` | `colors/synthwave.css` |
+</Accordion>
+
+<Accordion title="Catppuccin themes (4)">
+  | Settings label | Dropdown value | File |
+  |---|---|---|
+  | Mocha | `catppuccinMocha` | `catppuccin/mocha.css` |
+  | Macchiato | `catppuccinMacchiato` | `catppuccin/macchiato.css` |
+  | Frappe | `catppuccinFrappe` | `catppuccin/frappe.css` |
+  | Latte | `catppuccinLatte` | `catppuccin/latte.css` |
+</Accordion>

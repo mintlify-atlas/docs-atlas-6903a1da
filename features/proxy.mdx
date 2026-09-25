@@ -1,0 +1,140 @@
+---
+title: "How the T.O.P Web Proxy Works"
+sidebarTitle: "Web Proxy"
+description: "T.O.P proxies web traffic through Ultraviolet or Scramjet engines over Wisp WebSocket transport. URLs are XOR-encoded and decoded by a service worker."
+---
+
+T.O.P (Interstellar) acts as a full web proxy: you type a URL or search query into the home page, and the proxy engine fetches, rewrites, and serves the target content entirely inside your browser — no separate VPN or browser extension required. The server's primary responsibility is to deliver the JavaScript bundles and upgrade WebSocket connections for the Wisp transport layer; everything else happens client-side once the service worker is registered.
+
+## Architecture overview
+
+<Steps>
+  <Step title="User submits a URL or search query">
+    The home page (`/`) presents a search bar. When a URL is entered, it is validated and prepended with `https://` if no scheme is present. Plain text is forwarded to the configured search engine (defaulting to Brave Search).
+  </Step>
+  <Step title="Proxy engine encodes the URL">
+    The chosen proxy engine (Ultraviolet or Scramjet) encodes the target URL using an XOR codec so the destination is opaque in the browser's address bar.
+  </Step>
+  <Step title="Service worker intercepts the request">
+    `sw.js` is registered at startup with scope `/uv/`. It intercepts outbound fetch calls, decodes the XOR-encoded path, and tunnels the real request through the Wisp WebSocket transport.
+  </Step>
+  <Step title="Wisp WebSocket transport carries traffic">
+    The Node.js server upgrades matching WebSocket connections and routes them through the `@mercuryworkshop/wisp-js` server. The proxied response is rewritten on the fly and returned to the browser.
+  </Step>
+  <Step title="Content is rendered in-browser">
+    The rewritten HTML, CSS, and JavaScript land in the browser as if they came from the proxy origin. Cookies, storage, and navigation all stay within the proxied session.
+  </Step>
+</Steps>
+
+## Proxy engines
+
+T.O.P ships two proxy engines that users can switch between from the Settings page. Both use the same Wisp transport and XOR URL encoding.
+
+<CardGroup cols={2}>
+  <Card title="Scramjet (default)" icon="bolt">
+    The default engine as of v6.0.0. Scramjet bundles are served from `/assets/scramjet/` and registered via `scramjet.config.js`. The engine exposes `window.__urls.encodeUrl` and `window.__urls.decodeUrl` for URL encoding/decoding.
+  </Card>
+  <Card title="Ultraviolet (UV)" icon="shield">
+    The legacy engine, still fully supported. UV bundles are served from `/assets/ultraviolet/` and registered via `uv.config.js`. URLs are encoded with `window.encode.xor` and decoded with `window.decode.xor`.
+  </Card>
+</CardGroup>
+
+### Selecting a proxy engine
+
+Users pick their engine from the Settings page. The choice is persisted in `localStorage` under the key `proxy`. Valid values are `sj` (Scramjet) and `uv` (Ultraviolet). `main.js` reads this key at page load and exposes it via `window.resolveProxyChoice()`.
+
+```js
+// Excerpt from main.js — proxy selection at startup
+const PROXY_KEY = "proxy";
+const ALLOWED = ["uv", "sj"];
+const DEFAULT = "sj";
+
+function initProxy() {
+  const current = store.get(PROXY_KEY);
+  if (current === null) {
+    store.set(PROXY_KEY, DEFAULT);
+    return DEFAULT;
+  }
+  if (ALLOWED.includes(current)) return current;
+  store.set(PROXY_KEY, DEFAULT);
+  return DEFAULT;
+}
+
+window.resolveProxyChoice = initProxy;
+window.resolveProxyChoice();
+```
+
+## URL encoding
+
+Both engines use an XOR character transformation on top of `encodeURIComponent` so that proxied URLs look like random strings in the address bar. The address bar in the tabs interface laces zero-width Unicode characters through the displayed URL, making copying opaque strings back out harder without the cleanup logic built into the input handler.
+
+```js
+// Encoding dispatch in tabs.js
+async function encodeProxyUrl(url) {
+  if (isScramjetEnabled()) {
+    if (window.__ready) await window.__ready;
+    if (window.__urls?.encodeUrl) return window.__urls.encodeUrl(url);
+  }
+  return `/uv/${__uv$config.encodeUrl ? __uv$config.encodeUrl(url) : window.encode.xor(url)}`;
+}
+```
+
+## Wisp WebSocket transport
+
+[Wisp](https://github.com/MercuryWorkshop/wisp-js) is a WebSocket-based multiplexing protocol that lets the browser open a single persistent connection and tunnel multiple TCP streams through it. T.O.P uses `@mercuryworkshop/wisp-js/server` on the Node.js side to handle these upgrades.
+
+```js
+// Excerpt from src/server.js
+server.on("upgrade", (req, socket, head) => {
+  wisp.routeRequest(req, socket, head);
+});
+```
+
+Two flags are set to make local and self-hosted deployments work without network restrictions:
+
+```js
+wisp.options.allow_loopback_ips = true;
+wisp.options.allow_private_ips = true;
+```
+
+Users can also point the proxy at a custom external Wisp server from the Settings page (`ws://` or `wss://` URL). This is useful for deployments where the built-in Wisp endpoint is behind a firewall or load balancer.
+
+## Server routes
+
+The Express server mounts the following routes. In production builds the route paths are randomised and recorded in a vendor map; the clean paths listed here are used in development (`static/` mode).
+
+| Route | Served file | Rate limit |
+|---|---|---|
+| `GET /` | `index.html` | 100 req/min |
+| `GET /games` | `games.html` | 100 req/min |
+| `GET /apps` | `apps.html` | 100 req/min |
+| `GET /settings` | `settings.html` | 100 req/min |
+| `GET /tabs` | `tabs.html` | 100 req/min |
+| `GET /gh-games/:path` | GitHub game asset proxy | 50 req/min |
+
+Static assets (JS bundles, CSS, images) are served from the same directory via `express.static`. The `.runtime/` directory is explicitly blocked with a `404` to protect internal build metadata.
+
+## Rate limiting
+
+Two rate limiters are applied using `express-rate-limit`.
+
+```js
+// src/server.js
+const generalLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: "Too many requests, please try again later.",
+});
+```
+
+The `/gh-games` route uses a stricter limit of **50 requests per minute** to reduce load on upstream GitHub CDN mirrors.
+
+## Optional password protection
+
+If `config.challenge` is not set to `false`, the server enables HTTP Basic Auth using `express-basic-auth`. All routes require a valid username and password before any content is served.
+
+<Note>
+  The proxy runs entirely client-side after the service worker is registered. The Node.js server's job is to serve the JavaScript bundles on first load and to handle Wisp WebSocket upgrades for ongoing traffic. You can inspect all proxied requests in the browser's Network tab — they will appear as requests to the proxy origin, not to their real destinations.
+</Note>

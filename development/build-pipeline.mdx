@@ -1,0 +1,186 @@
+---
+title: "Production Build Pipeline for T.O.P"
+sidebarTitle: "Build Pipeline"
+description: "T.O.P's build pipeline obfuscates JavaScript, hardens HTML text nodes, minifies CSS, randomizes asset paths, and patches proxy codecs on every build."
+---
+
+T.O.P ships a dedicated build pipeline that transforms the contents of `static/` into a hardened, production-ready `dist/` directory. Every build is completely unique: asset URLs, CSS class names, codec keys, page routes, and internal identifiers are all re-randomized from scratch, so no two deploys share the same fingerprint.
+
+## Running the Build
+
+```bash
+pnpm build
+```
+
+This runs `node src/build.js` and writes all output to `dist/`. The server auto-detects the finished build by reading `dist/.runtime/vendor-map.cjs`. If that file is absent, the server falls back to `static/` — the unprocessed development tree.
+
+<Note>
+  Run `pnpm build` before every production deployment to get the full set of obfuscation and path-randomization guarantees. Each build produces a completely different set of asset paths.
+</Note>
+
+<Warning>
+  The build takes a few minutes to complete. Do not interrupt it — a partial build left in `dist/` will cause the server to fail on startup. The pipeline cleans `dist/` at the very beginning of each run, so an interrupted build always leaves the directory in an incomplete state. Re-run `pnpm build` to recover.
+</Warning>
+
+## What the Build Does
+
+The pipeline executes the following stages in order:
+
+<Steps>
+  <Step title="Clean and copy">
+    `dist/` is deleted entirely, then the full contents of `static/` are copied into it. All subsequent steps operate on `dist/` — the original `static/` tree is never modified.
+  </Step>
+
+  <Step title="Obfuscate CSS selectors">
+    Every CSS class name and HTML `id` that is statically resolvable across the codebase is replaced with a random five-character identifier (one letter followed by four hex digits, e.g. `q3af1`). The mapping is applied consistently across all `.css`, `.html`, and application `.js` files so selectors remain valid after the rename.
+
+    Selectors owned by external CDNs (Font Awesome `fa-*`, Material Symbols, Google Ads) are deliberately left untouched.
+  </Step>
+
+  <Step title="Process vendor assets">
+    The five proxy libraries — **Ultraviolet**, **Scramjet**, **bare-mux**, **epoxy**, and **libcurl** — are pulled directly from `node_modules`, then:
+
+    - Minified with Terser (two compression passes, dead-code elimination on console calls)
+    - Patched with per-build XOR codec keys (see [Per-Build Randomization](#per-build-randomization) below)
+    - Stripped of upstream branding and diagnostic error strings
+    - Renamed: internal identifiers, bare-mux storage keys, Scramjet protocol keys, and the `__uv` prefix are all replaced with random hex tokens
+    - Moved to unpredictable URL paths
+  </Step>
+
+  <Step title="Process application JavaScript">
+    The application scripts (`launcher.js`, `main.js`, `search.js`, `settings.js`, `tabs.js`, `sw.js`) are processed as a batch:
+
+    - Scope paths (`/uv/`, `/uv/scramjet/`) are rewritten to their new randomized equivalents
+    - All asset URL references are rewritten to match the new randomized paths
+    - Inline event-handler function names (`goHome`, `goBack`, `toggleAB`, etc.) are renamed to random hex tokens; the matching `on*` attributes in HTML are updated to match
+    - Page routes (`/apps`, `/games`, `/tabs`, `/settings`) are replaced with opaque tokens
+    - Proxy selector values (`"uv"` / `"sj"`) are replaced with fixed opaque strings
+    - Each file is then fully obfuscated with `javascript-obfuscator` (RC4 string array encoding, control-flow flattening, hexadecimal identifier names) and minified
+  </Step>
+
+  <Step title="Process HTML files">
+    Every `.html` file in `dist/` goes through three sub-steps:
+
+    1. **Inline script obfuscation** — `<script>` blocks without a `src` attribute are extracted, obfuscated with `javascript-obfuscator`, and re-injected
+    2. **Text-node hardening** — visible text is split across inert inline wrappers (`<span>`, `<x-a>`, `<x-b>`, `<ab-x>`, `<s-p>`) with occasional numeric character encoding, so the rendered page looks identical but contiguous plaintext is no longer present in the raw HTML
+    3. **Minification** — comments are stripped, redundant whitespace is collapsed, and protected blocks (scripts, styles, `<pre>`) are left verbatim
+  </Step>
+
+  <Step title="Randomize all asset paths">
+    Every CSS file, every JS file, every `.json` dataset, and the service worker all receive unpredictable URL paths generated from a pool of plausible-looking path segments and filenames. The original directory structure under `dist/assets/` is removed once moves are complete. JSON catalogues (`apps.min.json`, `games.min.json`) are additionally XOR-encoded before being written to their new locations.
+  </Step>
+
+  <Step title="Generate the vendor manifest">
+    `dist/.runtime/vendor-map.cjs` is written. It records the build ID, the randomized UV and Scramjet scope paths, the randomized service worker path, all page route mappings, and a full map of vendor asset IDs to their new public paths. The server reads this file at startup to know where everything lives.
+  </Step>
+
+  <Step title="Verify the build">
+    The pipeline runs a final verification pass that checks:
+
+    - Every asset listed in the manifest exists on disk and was actually emitted during this build
+    - Every emitted JavaScript file parses without errors
+    - No `.map` source-map files were accidentally shipped to `dist/`
+    - No `sourceMappingURL` comments remain in any script
+    - No references to retired public path prefixes (e.g. `/assets/ultraviolet/`, `/epoxy/`) survive in any file
+    - Every JS/MJS asset URL literal found in source files resolves to a known emitted path
+
+    If any check fails, the build exits with a non-zero code and prints a full list of failures. The incomplete `dist/` directory will be cleaned on the next run.
+  </Step>
+</Steps>
+
+## Per-Build Randomization
+
+The following values are re-generated from cryptographically random bytes on every single build:
+
+| What | Details |
+|---|---|
+| **XOR codec keys** | Both the Ultraviolet and Scramjet URL codecs get a fresh XOR key. The same key is embedded in `launcher.js` and patched into the respective config file so encode and decode always match. |
+| **UV and Scramjet scope paths** | `/uv/` and `/uv/scramjet/` become random word-based paths (e.g. `/fetch/delta/`). All references across vendor and app files are rewritten. |
+| **Page routes** | `/apps`, `/games`, `/tabs`, and `/settings` each become a single-letter-plus-hex token (e.g. `/b3f09c`). The root `/` and `/play.html` are intentionally left clean. |
+| **All CSS / JS / JSON URLs** | Every asset URL is replaced with a path drawn from a pool of realistic-looking directory segments and filenames, guaranteeing no two builds share the same asset tree. |
+| **Service worker path** | The service worker is moved to an unpredictable root-level path on every build. |
+| **CSS class names and IDs** | Statically resolvable selectors become five-character opaque identifiers, regenerated each build. |
+| **Internal identifier tokens** | Scramjet globals, bare-mux storage keys, protocol message keys, and the `__uv` prefix are all replaced with per-build random hex strings. |
+| **Build ID** | A four-byte hex string written to the manifest for traceability. |
+
+## Example Build Output
+
+```
+Cleaning dist/...
+Copying static/ -> dist/...
+Obfuscation: ON
+
+Selectors: 84 classes, 12 ids obfuscated
+  kept (externally owned or not statically resolvable): fa, fa-solid, adsbygoogle
+
+Page routes: /apps -> /b3f09c, /games -> /e1a72d, /tabs -> /c9b401, /settings -> /f80e53
+Scramjet identifiers: ScramjetController -> _a1b2c3d4e5, ...
+Proxy selector values: {"uv":"k3d","sj":"w9p"}
+Scramjet protocol keys: $scramjet$messagetype -> _9f3e200b34, ...
+bare-mux strings: bare-mux-worker- -> _d4c1a2b300-, ...
+
+Scope paths:
+  /uv/ -> /fetch/
+  /uv/scramjet/ -> /fetch/delta/
+
+URL codecs:
+  ultraviolet: xor:7b
+  scramjet:    xor:3a
+
+  + apps.min.json -> /stream/core.json
+  + games.min.json -> /parse/index.json
+
+CSS: 7 files -> randomized paths, minified 142.3kb -> 98.1kb
+
+Vendor assets:
+
+  + uv.bundle -> /exec/runtime.js (310.4kb -> 187.2kb, 39.7% smaller)
+  + uv.client -> /graph/cache.js (24.1kb -> 14.3kb, 40.7% smaller)
+  + uv.handler -> /tree/loader.js (8.2kb -> 5.1kb, 37.8% smaller)
+  + uv.sw -> /queue/worker.js (18.6kb -> 11.2kb, 39.8% smaller)
+  + uv.config -> /map/config.js (2.1kb -> 2.1kb, terser off)
+  + sj.all -> /bridge/client.js (1204.5kb -> 698.3kb, 42.0% smaller)
+  + sj.sync -> /channel/sync.js (3.2kb -> 2.0kb, 37.5% smaller)
+  + sj.wasm -> /adapter/core.wasm (412.8kb, copied)
+  + sj.config -> /router/config.js (1.4kb -> 1.4kb, terser off)
+  + baremux -> /scheduler/index.mjs (44.3kb -> 24.1kb, 45.6% smaller)
+  + baremux.worker -> /resolver/worker.js (12.8kb -> 6.9kb, 46.1% smaller)
+  + epoxy -> /encoder/index.mjs (892.7kb -> 540.1kb, 39.5% smaller)
+  + libcurl -> /decoder/index.mjs (2041.3kb -> 1198.2kb, 41.3% smaller)
+
+Application JS -> /monitor/handler
+
+  + launcher.js -> /monitor/handler/runtime.js (obfuscated)
+  + main.js -> /monitor/handler/core.js (obfuscated)
+  + search.js -> /monitor/handler/api.js (obfuscated)
+  + settings.js -> /monitor/handler/config.js (obfuscated)
+  + tabs.js -> /monitor/handler/loader.js (obfuscated)
+  + sw.js -> /init.js (obfuscated)
+
+Updating 6 HTML files + obfuscating...
+
+  + index.html (html-obfuscated)
+  + apps.html (html-obfuscated)
+  + games.html (html-obfuscated)
+  + tabs.html (html-obfuscated)
+  + settings.html (html-obfuscated)
+  + 404.html (html-obfuscated)
+
+Verifying build...
+  all checks passed (41 emitted assets, 14 scripts parsed, 187 asset references resolved across 20 files)
+
+Build complete -> dist/
+
+Build id: 9c4e1f2a  scope: /fetch/  scramjet: /fetch/delta/  sw: /init.js
+```
+
+## Development Mode
+
+When developing locally, you do not need to run `pnpm build`. Start the server directly:
+
+```bash
+pnpm install
+pnpm start
+```
+
+The server detects the absence of `dist/.runtime/vendor-map.cjs` and falls back to serving from `static/` with no obfuscation applied. Asset paths remain at their original locations and hot-reloading your changes is instant.
